@@ -4,7 +4,13 @@ import {
   type Property, 
   type InsertProperty,
   type Appointment,
-  type InsertAppointment
+  type InsertAppointment,
+  type Client,
+  type InsertClient,
+  type PropertyPreference,
+  type InsertPropertyPreference,
+  type ShowingSlot,
+  type InsertShowingSlot
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -33,17 +39,46 @@ export interface IStorage {
   createAppointment(appointment: InsertAppointment): Promise<Appointment>;
   updateAppointment(id: string, appointment: Partial<InsertAppointment>): Promise<Appointment | undefined>;
   deleteAppointment(id: string): Promise<boolean>;
+
+  // Client operations
+  getClient(id: string): Promise<Client | undefined>;
+  getAllClients(): Promise<Client[]>;
+  getClientsByAgent(agentId: string): Promise<Client[]>;
+  createClient(client: InsertClient): Promise<Client>;
+  updateClient(id: string, client: Partial<InsertClient>): Promise<Client | undefined>;
+  deleteClient(id: string): Promise<boolean>;
+
+  // Property Preference operations
+  getPropertyPreference(id: string): Promise<PropertyPreference | undefined>;
+  getPreferencesByClient(clientId: string): Promise<PropertyPreference[]>;
+  getClientsByProperty(propertyId: string): Promise<PropertyPreference[]>;
+  createPropertyPreference(preference: InsertPropertyPreference): Promise<PropertyPreference>;
+  deletePropertyPreference(id: string): Promise<boolean>;
+
+  // Showing Slot operations
+  getShowingSlot(id: string): Promise<ShowingSlot | undefined>;
+  getSlotsByProperty(propertyId: string): Promise<ShowingSlot[]>;
+  getAvailableSlots(propertyId: string, date: Date): Promise<ShowingSlot[]>;
+  createShowingSlot(slot: InsertShowingSlot): Promise<ShowingSlot>;
+  updateShowingSlot(id: string, slot: Partial<InsertShowingSlot>): Promise<ShowingSlot | undefined>;
+  deleteShowingSlot(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
   private agents: Map<string, Agent>;
   private properties: Map<string, Property>;
   private appointments: Map<string, Appointment>;
+  private clients: Map<string, Client>;
+  private propertyPreferences: Map<string, PropertyPreference>;
+  private showingSlots: Map<string, ShowingSlot>;
 
   constructor() {
     this.agents = new Map();
     this.properties = new Map();
     this.appointments = new Map();
+    this.clients = new Map();
+    this.propertyPreferences = new Map();
+    this.showingSlots = new Map();
   }
 
   // Agent operations
@@ -164,9 +199,11 @@ export class MemStorage implements IStorage {
       id,
       status: insertAppointment.status ?? "scheduled",
       duration: insertAppointment.duration ?? 60,
+      clientId: insertAppointment.clientId ?? null,
       clientEmail: insertAppointment.clientEmail ?? null,
       clientPhone: insertAppointment.clientPhone ?? null,
-      notes: insertAppointment.notes ?? null
+      notes: insertAppointment.notes ?? null,
+      postAppointmentNotes: insertAppointment.postAppointmentNotes ?? null
     };
     this.appointments.set(id, appointment);
     return appointment;
@@ -182,6 +219,131 @@ export class MemStorage implements IStorage {
 
   async deleteAppointment(id: string): Promise<boolean> {
     return this.appointments.delete(id);
+  }
+
+  // Client operations
+  async getClient(id: string): Promise<Client | undefined> {
+    return this.clients.get(id);
+  }
+
+  async getAllClients(): Promise<Client[]> {
+    return Array.from(this.clients.values());
+  }
+
+  async getClientsByAgent(agentId: string): Promise<Client[]> {
+    return Array.from(this.clients.values()).filter(
+      (client) => client.agentId === agentId,
+    );
+  }
+
+  async createClient(insertClient: InsertClient): Promise<Client> {
+    const id = randomUUID();
+    const client: Client = { 
+      ...insertClient, 
+      id,
+      email: insertClient.email ?? null,
+      phone: insertClient.phone ?? null,
+      preferredDays: insertClient.preferredDays ?? null,
+      preferredTimeSlots: insertClient.preferredTimeSlots ?? null,
+      notes: insertClient.notes ?? null
+    };
+    this.clients.set(id, client);
+    return client;
+  }
+
+  async updateClient(id: string, updates: Partial<InsertClient>): Promise<Client | undefined> {
+    const client = this.clients.get(id);
+    if (!client) return undefined;
+    const updatedClient = { ...client, ...updates };
+    this.clients.set(id, updatedClient);
+    return updatedClient;
+  }
+
+  async deleteClient(id: string): Promise<boolean> {
+    return this.clients.delete(id);
+  }
+
+  // Property Preference operations
+  async getPropertyPreference(id: string): Promise<PropertyPreference | undefined> {
+    return this.propertyPreferences.get(id);
+  }
+
+  async getPreferencesByClient(clientId: string): Promise<PropertyPreference[]> {
+    return Array.from(this.propertyPreferences.values()).filter(
+      (pref) => pref.clientId === clientId,
+    );
+  }
+
+  async getClientsByProperty(propertyId: string): Promise<PropertyPreference[]> {
+    return Array.from(this.propertyPreferences.values()).filter(
+      (pref) => pref.propertyId === propertyId,
+    );
+  }
+
+  async createPropertyPreference(insertPref: InsertPropertyPreference): Promise<PropertyPreference> {
+    const id = randomUUID();
+    const preference: PropertyPreference = { 
+      ...insertPref, 
+      id,
+      priority: insertPref.priority ?? 1,
+      notes: insertPref.notes ?? null
+    };
+    this.propertyPreferences.set(id, preference);
+    return preference;
+  }
+
+  async deletePropertyPreference(id: string): Promise<boolean> {
+    return this.propertyPreferences.delete(id);
+  }
+
+  // Showing Slot operations
+  async getShowingSlot(id: string): Promise<ShowingSlot | undefined> {
+    return this.showingSlots.get(id);
+  }
+
+  async getSlotsByProperty(propertyId: string): Promise<ShowingSlot[]> {
+    return Array.from(this.showingSlots.values()).filter(
+      (slot) => slot.propertyId === propertyId,
+    );
+  }
+
+  async getAvailableSlots(propertyId: string, date: Date): Promise<ShowingSlot[]> {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return Array.from(this.showingSlots.values()).filter(
+      (slot) => 
+        slot.propertyId === propertyId &&
+        slot.isBooked === "false" &&
+        new Date(slot.date) >= startOfDay &&
+        new Date(slot.date) <= endOfDay
+    );
+  }
+
+  async createShowingSlot(insertSlot: InsertShowingSlot): Promise<ShowingSlot> {
+    const id = randomUUID();
+    const slot: ShowingSlot = { 
+      ...insertSlot, 
+      id,
+      isBooked: insertSlot.isBooked ?? "false",
+      bookedBy: insertSlot.bookedBy ?? null
+    };
+    this.showingSlots.set(id, slot);
+    return slot;
+  }
+
+  async updateShowingSlot(id: string, updates: Partial<InsertShowingSlot>): Promise<ShowingSlot | undefined> {
+    const slot = this.showingSlots.get(id);
+    if (!slot) return undefined;
+    const updatedSlot = { ...slot, ...updates };
+    this.showingSlots.set(id, updatedSlot);
+    return updatedSlot;
+  }
+
+  async deleteShowingSlot(id: string): Promise<boolean> {
+    return this.showingSlots.delete(id);
   }
 }
 
