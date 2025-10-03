@@ -4,6 +4,7 @@
 RouteWise is an intelligent scheduling application designed specifically for real estate agents to manage property showings and optimize travel routes. The app calculates distances between properties and suggests the most efficient visiting sequence to minimize travel time and maximize productivity.
 
 ## Recent Changes
+- **2025-10-03**: Added Smart Schedule Generator - agents can select a date, view available clients, and automatically generate optimized schedules considering client availability, property preferences, and showing time slots. Includes automatic date synchronization with Schedule tab.
 - **2025-10-03**: Added Google Maps navigation - "Start Navigation" button opens turn-by-turn directions with all route stops
 - **2025-09-28**: Integrated Google Maps API with interactive map, property markers, and route visualization
 - **2025-09-28**: Implemented client filtering for schedules with accurate stats and timeline
@@ -23,11 +24,15 @@ RouteWise is an intelligent scheduling application designed specifically for rea
 - **ScheduleTimeline Component**: Visual timeline showing daily appointments with travel times
 - **RouteMap Component**: Interactive map view with property markers and route visualization
 - **PropertyCard Component**: Reusable property display with scheduling actions
+- **SmartScheduler Component**: Intelligent scheduling interface with date selection, client availability, and one-click schedule generation
 - **Theme System**: Dark/light mode toggle with professional color scheme
 
 ### Data Models
 - **Agent**: Real estate agent information
-- **Property**: Property details with geocoordinates for route calculation  
+- **Client**: Client contact and availability preferences (preferred days/times)
+- **Property**: Property details with geocoordinates for route calculation
+- **PropertyPreference**: Links clients to their preferred properties
+- **ShowingSlot**: Time slot availability for property showings
 - **Appointment**: Scheduled showings with client information
 - **DailySchedule**: Optimized daily route with travel time calculations
 - **RouteStop**: Individual stops with travel time estimates
