@@ -9,7 +9,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Clock, MapPin, Car, Route, Zap, ArrowUpDown } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Clock, MapPin, Car, Route, Zap, ArrowUpDown, FileText } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { DailySchedule, RouteStop } from "@shared/schema";
 
 interface ScheduleTimelineProps {
@@ -20,6 +32,34 @@ interface ScheduleTimelineProps {
 
 export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops }: ScheduleTimelineProps) {
   const [selectedClient, setSelectedClient] = useState<string>("all");
+  const [editingNotes, setEditingNotes] = useState<{ appointmentId: string; notes: string } | null>(null);
+  const { toast } = useToast();
+
+  const updateNotesMutation = useMutation({
+    mutationFn: async ({ appointmentId, notes }: { appointmentId: string; notes: string }) => {
+      return await apiRequest(`/api/appointments/${appointmentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes })
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+      toast({
+        title: "Notes saved",
+        description: "Appointment notes have been updated successfully.",
+      });
+      setEditingNotes(null);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save notes. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
   
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', { 
@@ -194,10 +234,24 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
                           )}
                         </div>
                         {stop.appointment.notes && (
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-sm text-muted-foreground" data-testid={`text-notes-${index}`}>
                             <strong>Notes:</strong> {stop.appointment.notes}
                           </div>
                         )}
+                        <div className="pt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingNotes({ 
+                              appointmentId: stop.appointment.id, 
+                              notes: stop.appointment.notes || '' 
+                            })}
+                            data-testid={`button-edit-notes-${index}`}
+                          >
+                            <FileText className="w-4 h-4 mr-2" />
+                            {stop.appointment.notes ? 'Edit Notes' : 'Add Notes'}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -208,6 +262,48 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
           </div>
         )}
       </CardContent>
+
+      {/* Notes Dialog */}
+      <Dialog open={!!editingNotes} onOpenChange={(open) => !open && setEditingNotes(null)}>
+        <DialogContent data-testid="dialog-edit-notes">
+          <DialogHeader>
+            <DialogTitle>Appointment Notes</DialogTitle>
+            <DialogDescription>
+              Add or edit notes for this appointment. These notes will be saved and visible in your schedule.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder="Enter appointment notes..."
+              value={editingNotes?.notes || ''}
+              onChange={(e) => editingNotes && setEditingNotes({ ...editingNotes, notes: e.target.value })}
+              rows={6}
+              className="resize-none"
+              data-testid="textarea-notes"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditingNotes(null)}
+              disabled={updateNotesMutation.isPending}
+              data-testid="button-cancel-notes"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => editingNotes && updateNotesMutation.mutate({
+                appointmentId: editingNotes.appointmentId,
+                notes: editingNotes.notes
+              })}
+              disabled={updateNotesMutation.isPending}
+              data-testid="button-save-notes"
+            >
+              {updateNotesMutation.isPending ? 'Saving...' : 'Save Notes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
