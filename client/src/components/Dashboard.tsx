@@ -18,6 +18,7 @@ import {
 import PropertyCard from "./PropertyCard";
 import ScheduleTimeline from "./ScheduleTimeline";
 import RouteMap from "./RouteMap";
+import SmartScheduler from "./SmartScheduler";
 import type { DailySchedule, Property, Agent } from "@shared/schema";
 
 interface DashboardProps {
@@ -220,20 +221,7 @@ export default function Dashboard({
           </TabsContent>
 
           <TabsContent value="clients" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Client Management</h2>
-              <Button data-testid="button-add-client">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Client
-              </Button>
-            </div>
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-muted-foreground text-center py-8">
-                  Client management coming soon...
-                </p>
-              </CardContent>
-            </Card>
+            <SmartScheduler agentId={agent.id} />
           </TabsContent>
 
           <TabsContent value="properties" className="space-y-6">
