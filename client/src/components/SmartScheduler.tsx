@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { Sparkles, MapPin, Users, CheckCircle2, Clock, Route } from "lucide-react";
+import { Sparkles, MapPin, Users, CheckCircle2, Clock, Route, Calendar as CalendarIcon } from "lucide-react";
 import type { Client } from "@shared/schema";
 
 interface SmartSchedulerProps {
@@ -34,6 +34,17 @@ export default function SmartScheduler({ agentId, onDateChange }: SmartScheduler
     }
   });
 
+  // Fetch showing slots when date is selected
+  const { data: showingSlots } = useQuery({
+    queryKey: ['/api/showing-slots', selectedDate?.toISOString().split('T')[0]],
+    queryFn: async () => {
+      if (!selectedDate) return [];
+      const res = await fetch(`/api/showing-slots?date=${selectedDate.toISOString().split('T')[0]}`);
+      return res.json();
+    },
+    enabled: !!selectedDate
+  });
+
   // Smart schedule mutation
   const smartScheduleMutation = useMutation({
     mutationFn: async () => {
@@ -52,9 +63,10 @@ export default function SmartScheduler({ agentId, onDateChange }: SmartScheduler
       if (onDateChange && selectedDate) {
         onDateChange(selectedDate.toISOString().split('T')[0]);
       }
-      // Invalidate schedule queries to refresh the schedule view
+      // Invalidate queries to refresh all views
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/showing-slots'] });
     }
   });
 
@@ -239,6 +251,49 @@ export default function SmartScheduler({ agentId, onDateChange }: SmartScheduler
             <div className="text-sm text-muted-foreground text-center pt-4 border-t">
               {scheduleResult.appointments.length} appointments created and showing slots booked. 
               View the schedule in the Schedule tab or Map View.
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Property Availability */}
+      {selectedDate && showingSlots && showingSlots.length > 0 && (
+        <Card data-testid="card-property-availability">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-accent" />
+              Property Showing Availability
+            </CardTitle>
+            <CardDescription>
+              {showingSlots.length} time slots available on {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {showingSlots
+                .sort((a: any, b: any) => a.startTime.localeCompare(b.startTime))
+                .map((slot: any, index: number) => (
+                  <div key={slot.id || index} className="flex items-center justify-between p-3 rounded-lg border" data-testid={`slot-${index}`}>
+                    <div className="flex-1">
+                      <p className="font-medium" data-testid={`text-property-address-slot-${index}`}>
+                        {slot.property.address}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {slot.property.city}, {slot.property.state}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant={slot.isBooked === "true" ? "secondary" : "default"} data-testid={`badge-slot-time-${index}`}>
+                        {slot.startTime} - {slot.endTime}
+                      </Badge>
+                      {slot.isBooked === "true" && (
+                        <Badge variant="outline" className="text-xs">
+                          Booked
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
             </div>
           </CardContent>
         </Card>

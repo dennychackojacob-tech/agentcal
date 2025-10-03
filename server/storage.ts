@@ -59,6 +59,7 @@ export interface IStorage {
   getShowingSlot(id: string): Promise<ShowingSlot | undefined>;
   getSlotsByProperty(propertyId: string): Promise<ShowingSlot[]>;
   getAvailableSlots(propertyId: string, date: Date): Promise<ShowingSlot[]>;
+  getAllShowingSlots(): Promise<ShowingSlot[]>;
   createShowingSlot(slot: InsertShowingSlot): Promise<ShowingSlot>;
   updateShowingSlot(id: string, slot: Partial<InsertShowingSlot>): Promise<ShowingSlot | undefined>;
   deleteShowingSlot(id: string): Promise<boolean>;
@@ -320,6 +321,10 @@ export class MemStorage implements IStorage {
         new Date(slot.date) >= startOfDay &&
         new Date(slot.date) <= endOfDay
     );
+  }
+
+  async getAllShowingSlots(): Promise<ShowingSlot[]> {
+    return Array.from(this.showingSlots.values());
   }
 
   async createShowingSlot(insertSlot: InsertShowingSlot): Promise<ShowingSlot> {

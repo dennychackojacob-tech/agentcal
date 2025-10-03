@@ -292,6 +292,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get showing slots for a date
+  app.get("/api/showing-slots", async (req, res) => {
+    try {
+      const { date, propertyId } = req.query;
+      
+      if (!date) {
+        return res.status(400).json({ error: "Date is required" });
+      }
+
+      const parsedDate = new Date(date as string);
+      const startOfDay = new Date(parsedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(parsedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      if (propertyId) {
+        // Get all slots for this property on the date (including booked ones)
+        const allSlots = await storage.getAllShowingSlots();
+        const slots = allSlots.filter(
+          (slot: any) => 
+            slot.propertyId === propertyId &&
+            new Date(slot.date) >= startOfDay &&
+            new Date(slot.date) <= endOfDay
+        );
+        res.json(slots);
+      } else {
+        // Get all properties and their slots for the date (including booked ones)
+        const properties = await storage.getAllProperties();
+        const allSlots = await storage.getAllShowingSlots();
+        const slotsWithProperties = [];
+        
+        for (const property of properties) {
+          const propertySlots = allSlots.filter(
+            (slot: any) => 
+              slot.propertyId === property.id &&
+              new Date(slot.date) >= startOfDay &&
+              new Date(slot.date) <= endOfDay
+          );
+          
+          for (const slot of propertySlots) {
+            slotsWithProperties.push({
+              ...slot,
+              property
+            });
+          }
+        }
+        
+        res.json(slotsWithProperties);
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch showing slots" });
+    }
+  });
+
   // Get daily schedule endpoint
   app.get("/api/schedule/:agentId/:date", async (req, res) => {
     try {
