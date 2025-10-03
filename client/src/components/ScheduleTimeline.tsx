@@ -19,7 +19,8 @@ interface ScheduleTimelineProps {
 }
 
 export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops }: ScheduleTimelineProps) {
-  const [sortBy, setSortBy] = useState<"optimized" | "time" | "client">("optimized");
+  const [selectedClient, setSelectedClient] = useState<string>("all");
+  
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
@@ -35,27 +36,24 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   };
 
-  // Sort stops based on selected option
-  const getSortedStops = () => {
-    const stops = [...schedule.stops];
-    
-    switch (sortBy) {
-      case "client":
-        return stops.sort((a, b) => 
-          a.appointment.clientName.localeCompare(b.appointment.clientName)
-        );
-      case "time":
-        return stops.sort((a, b) => 
-          new Date(a.appointment.scheduledDate).getTime() - 
-          new Date(b.appointment.scheduledDate).getTime()
-        );
-      case "optimized":
-      default:
-        return stops;
-    }
-  };
+  // Get unique client names
+  const clients = Array.from(new Set(schedule.stops.map(stop => stop.appointment.clientName)));
 
-  const sortedStops = getSortedStops();
+  // Filter stops by selected client
+  const filteredStops = selectedClient === "all" 
+    ? schedule.stops 
+    : schedule.stops.filter(stop => stop.appointment.clientName === selectedClient);
+
+  // Calculate stats for filtered appointments
+  const filteredStats = filteredStops.reduce((acc, stop, index) => {
+    if (index > 0 && stop.distanceFromPrevious) {
+      acc.totalDistance += stop.distanceFromPrevious;
+    }
+    if (stop.estimatedTravelTime) {
+      acc.totalTravelTime += stop.estimatedTravelTime;
+    }
+    return acc;
+  }, { totalDistance: 0, totalTravelTime: 0 });
 
   return (
     <Card data-testid="card-schedule-timeline">
@@ -73,11 +71,15 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
             <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
               <div className="flex items-center gap-1">
                 <Car className="w-4 h-4" />
-                {(schedule.totalDistance * 1.60934).toFixed(1)} km
+                {selectedClient === "all" 
+                  ? (schedule.totalDistance * 1.60934).toFixed(1) 
+                  : (filteredStats.totalDistance * 1.60934).toFixed(1)} km
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                {formatDuration(schedule.totalTravelTime)} travel
+                {selectedClient === "all"
+                  ? formatDuration(schedule.totalTravelTime)
+                  : formatDuration(filteredStats.totalTravelTime)} travel
               </div>
               <div className="flex items-center gap-1">
                 {schedule.optimized ? (
@@ -92,15 +94,20 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-              <SelectTrigger className="w-40" data-testid="select-sort-by">
-                <ArrowUpDown className="w-4 h-4 mr-2" />
-                <SelectValue />
+            <Select value={selectedClient} onValueChange={setSelectedClient}>
+              <SelectTrigger className="w-48" data-testid="select-filter-client">
+                <SelectValue placeholder="Filter by client" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="optimized">Optimized Order</SelectItem>
-                <SelectItem value="time">By Time</SelectItem>
-                <SelectItem value="client">By Client</SelectItem>
+                <SelectItem value="all">All Clients ({schedule.stops.length})</SelectItem>
+                {clients.map((client) => {
+                  const count = schedule.stops.filter(s => s.appointment.clientName === client).length;
+                  return (
+                    <SelectItem key={client} value={client}>
+                      {client} ({count})
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
             {onOptimize && !schedule.optimized && (
@@ -118,15 +125,20 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
       </CardHeader>
 
       <CardContent>
-        <div className="space-y-4">
-          {sortedStops.map((stop, index) => {
+        {filteredStops.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No appointments found for this client.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredStops.map((stop, index) => {
             const appointmentTime = new Date(stop.appointment.scheduledDate);
             const endTime = new Date(appointmentTime.getTime() + stop.appointment.duration * 60000);
 
             return (
               <div key={stop.appointment.id} className="relative">
                 {/* Timeline Connection Line */}
-                {index < schedule.stops.length - 1 && (
+                {index < filteredStops.length - 1 && (
                   <div className="absolute left-8 top-16 w-0.5 h-12 bg-border z-0" />
                 )}
                 
@@ -193,7 +205,8 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
