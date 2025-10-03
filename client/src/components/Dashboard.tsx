@@ -12,7 +12,8 @@ import {
   Plus, 
   Settings,
   Bell,
-  User
+  User,
+  Users
 } from "lucide-react";
 import PropertyCard from "./PropertyCard";
 import ScheduleTimeline from "./ScheduleTimeline";
@@ -172,7 +173,7 @@ export default function Dashboard({
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3" data-testid="dashboard-tabs">
+          <TabsList className="grid w-full grid-cols-4" data-testid="dashboard-tabs">
             <TabsTrigger value="schedule" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Schedule
@@ -180,6 +181,10 @@ export default function Dashboard({
             <TabsTrigger value="map" className="flex items-center gap-2">
               <Map className="w-4 h-4" />
               Map View
+            </TabsTrigger>
+            <TabsTrigger value="clients" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Clients
             </TabsTrigger>
             <TabsTrigger value="properties" className="flex items-center gap-2">
               <Home className="w-4 h-4" />
@@ -212,6 +217,23 @@ export default function Dashboard({
               schedule={todaySchedule}
               onOptimize={onOptimizeRoute}
             />
+          </TabsContent>
+
+          <TabsContent value="clients" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Client Management</h2>
+              <Button data-testid="button-add-client">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Client
+              </Button>
+            </div>
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-muted-foreground text-center py-8">
+                  Client management coming soon...
+                </p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="properties" className="space-y-6">

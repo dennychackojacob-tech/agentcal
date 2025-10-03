@@ -1,5 +1,5 @@
 import { storage } from './storage';
-import type { InsertAgent, InsertProperty, InsertAppointment } from '@shared/schema';
+import type { InsertAgent, InsertProperty, InsertAppointment, InsertClient, InsertPropertyPreference, InsertShowingSlot } from '@shared/schema';
 
 export async function seedData() {
   // Check if data already exists
@@ -153,8 +153,120 @@ export async function seedData() {
     appointments.map(a => storage.createAppointment(a))
   );
 
+  // Create sample clients for smart scheduling
+  const clients: InsertClient[] = [
+    {
+      agentId: createdAgent.id,
+      name: "Robert Thompson",
+      email: "robert.t@email.com",
+      phone: "(555) 111-2222",
+      preferredDays: ["Saturday", "Sunday"],
+      preferredTimeSlots: ["morning", "afternoon"],
+      notes: "Looking for properties in Hamilton area"
+    },
+    {
+      agentId: createdAgent.id,
+      name: "Emily Rodriguez",
+      email: "emily.r@email.com",
+      phone: "(555) 333-4444",
+      preferredDays: ["Saturday"],
+      preferredTimeSlots: ["afternoon"],
+      notes: "Interested in Oakville properties"
+    },
+    {
+      agentId: createdAgent.id,
+      name: "Michael Chang",
+      email: "michael.c@email.com",
+      phone: "(555) 555-6666",
+      preferredDays: ["Friday", "Saturday"],
+      preferredTimeSlots: ["morning", "afternoon", "evening"],
+      notes: "Flexible schedule, looking in Mississauga"
+    },
+    {
+      agentId: createdAgent.id,
+      name: "Sarah Williams",
+      email: "sarah.w@email.com",
+      phone: "(555) 777-8888",
+      preferredDays: ["Sunday"],
+      preferredTimeSlots: ["afternoon"],
+      notes: "Prefers Toronto locations"
+    }
+  ];
+
+  const createdClients = await Promise.all(
+    clients.map(c => storage.createClient(c))
+  );
+
+  // Create property preferences (which client wants to see which properties)
+  const preferences: InsertPropertyPreference[] = [
+    // Robert Thompson (Hamilton area - no Hamilton properties in seed, so nearby)
+    { clientId: createdClients[0].id, propertyId: createdProperties[2].id, priority: 1 }, // Brampton
+    { clientId: createdClients[0].id, propertyId: createdProperties[4].id, priority: 2 }, // Milton
+    { clientId: createdClients[0].id, propertyId: createdProperties[5].id, priority: 1 }, // Mississauga
+    
+    // Emily Rodriguez (Oakville area - Milton/Mississauga nearby)
+    { clientId: createdClients[1].id, propertyId: createdProperties[1].id, priority: 1 }, // Mississauga
+    { clientId: createdClients[1].id, propertyId: createdProperties[4].id, priority: 1 }, // Milton
+    { clientId: createdClients[1].id, propertyId: createdProperties[5].id, priority: 2 }, // Mississauga
+    
+    // Michael Chang (Mississauga)
+    { clientId: createdClients[2].id, propertyId: createdProperties[1].id, priority: 1 },
+    { clientId: createdClients[2].id, propertyId: createdProperties[5].id, priority: 1 },
+    
+    // Sarah Williams (Toronto)
+    { clientId: createdClients[3].id, propertyId: createdProperties[0].id, priority: 1 },
+    { clientId: createdClients[3].id, propertyId: createdProperties[3].id, priority: 1 }
+  ];
+
+  await Promise.all(
+    preferences.map(p => storage.createPropertyPreference(p))
+  );
+
+  // Create showing slots for next Saturday
+  const nextSaturday = new Date();
+  const daysUntilSaturday = (6 - nextSaturday.getDay() + 7) % 7;
+  nextSaturday.setDate(nextSaturday.getDate() + (daysUntilSaturday === 0 ? 7 : daysUntilSaturday));
+  nextSaturday.setHours(0, 0, 0, 0);
+
+  const showingSlots: InsertShowingSlot[] = [
+    // Property 0 (Toronto) - Morning and afternoon slots
+    { propertyId: createdProperties[0].id, date: nextSaturday, startTime: "09:00", endTime: "10:00", isBooked: "false" },
+    { propertyId: createdProperties[0].id, date: nextSaturday, startTime: "11:00", endTime: "12:00", isBooked: "false" },
+    { propertyId: createdProperties[0].id, date: nextSaturday, startTime: "14:00", endTime: "15:00", isBooked: "false" },
+    
+    // Property 1 (Mississauga) - Multiple slots
+    { propertyId: createdProperties[1].id, date: nextSaturday, startTime: "10:00", endTime: "11:00", isBooked: "false" },
+    { propertyId: createdProperties[1].id, date: nextSaturday, startTime: "13:00", endTime: "14:00", isBooked: "false" },
+    { propertyId: createdProperties[1].id, date: nextSaturday, startTime: "15:00", endTime: "16:00", isBooked: "false" },
+    
+    // Property 2 (Brampton) - Morning and afternoon
+    { propertyId: createdProperties[2].id, date: nextSaturday, startTime: "09:00", endTime: "10:00", isBooked: "false" },
+    { propertyId: createdProperties[2].id, date: nextSaturday, startTime: "14:00", endTime: "15:00", isBooked: "false" },
+    
+    // Property 3 (Toronto) - Afternoon only
+    { propertyId: createdProperties[3].id, date: nextSaturday, startTime: "14:00", endTime: "15:00", isBooked: "false" },
+    { propertyId: createdProperties[3].id, date: nextSaturday, startTime: "16:00", endTime: "17:00", isBooked: "false" },
+    
+    // Property 4 (Milton) - Full day availability
+    { propertyId: createdProperties[4].id, date: nextSaturday, startTime: "09:00", endTime: "10:00", isBooked: "false" },
+    { propertyId: createdProperties[4].id, date: nextSaturday, startTime: "11:00", endTime: "12:00", isBooked: "false" },
+    { propertyId: createdProperties[4].id, date: nextSaturday, startTime: "13:00", endTime: "14:00", isBooked: "false" },
+    { propertyId: createdProperties[4].id, date: nextSaturday, startTime: "15:00", endTime: "16:00", isBooked: "false" },
+    
+    // Property 5 (Mississauga) - Afternoon slots
+    { propertyId: createdProperties[5].id, date: nextSaturday, startTime: "13:00", endTime: "14:00", isBooked: "false" },
+    { propertyId: createdProperties[5].id, date: nextSaturday, startTime: "15:00", endTime: "16:00", isBooked: "false" }
+  ];
+
+  await Promise.all(
+    showingSlots.map(s => storage.createShowingSlot(s))
+  );
+
   console.log('Seed data created successfully!');
   console.log(`Agent: ${createdAgent.name} (${createdAgent.id})`);
   console.log(`Properties: ${createdProperties.length}`);
   console.log(`Appointments: ${appointments.length}`);
+  console.log(`Clients: ${createdClients.length}`);
+  console.log(`Property Preferences: ${preferences.length}`);
+  console.log(`Showing Slots: ${showingSlots.length}`);
 }
