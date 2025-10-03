@@ -42,7 +42,7 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
             <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
               <div className="flex items-center gap-1">
                 <Car className="w-4 h-4" />
-                {schedule.totalDistance.toFixed(1)} miles
+                {(schedule.totalDistance * 1.60934).toFixed(1)} km
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />

@@ -119,7 +119,7 @@ export default function PropertyCard({
               )}
               {distance && (
                 <Badge variant="outline" data-testid={`badge-distance-${property.id}`}>
-                  {distance.toFixed(1)} mi
+                  {(distance * 1.60934).toFixed(1)} km
                 </Badge>
               )}
             </div>

@@ -109,7 +109,7 @@ export default function Dashboard({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Distance</p>
-                  <p className="text-2xl font-bold">{todaySchedule.totalDistance.toFixed(1)} mi</p>
+                  <p className="text-2xl font-bold">{(todaySchedule.totalDistance * 1.60934).toFixed(1)} km</p>
                 </div>
                 <Route className="w-8 h-8 text-muted-foreground" />
               </div>
