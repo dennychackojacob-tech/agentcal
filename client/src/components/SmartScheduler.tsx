@@ -26,7 +26,7 @@ export default function SmartScheduler({ agentId, onDateChange }: SmartScheduler
   const [scheduleResult, setScheduleResult] = useState<SmartScheduleResult | null>(null);
 
   // Fetch clients
-  const { data: clients } = useQuery<Client[]>({
+  const { data: clients, isLoading: clientsLoading } = useQuery<Client[]>({
     queryKey: ['/api/clients', agentId],
     queryFn: async () => {
       const res = await fetch(`/api/clients?agentId=${agentId}`);
@@ -105,14 +105,48 @@ export default function SmartScheduler({ agentId, onDateChange }: SmartScheduler
             {/* Available Clients */}
             <div>
               <h3 className="text-sm font-medium mb-3">
-                Available Clients {selectedDate && `(${availableClients.length})`}
+                {selectedDate ? `Available Clients (${availableClients.length})` : `All Clients (${clients?.length || 0})`}
               </h3>
-              {!selectedDate ? (
-                <p className="text-sm text-muted-foreground">Select a date to see available clients</p>
+              {clientsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading clients...</p>
+              ) : !clients || clients.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No clients found</p>
+              ) : !selectedDate ? (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {clients.map((client, index) => (
+                    <Card key={client.id} data-testid={`card-client-${index}`}>
+                      <CardContent className="p-3">
+                        <div>
+                          <p className="font-medium" data-testid={`text-client-name-${index}`}>{client.name}</p>
+                          <p className="text-xs text-muted-foreground">{client.notes}</p>
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {client.preferredDays?.map(day => (
+                              <Badge key={day} variant="secondary" className="text-xs">
+                                {day}
+                              </Badge>
+                            ))}
+                          </div>
+                          {client.preferredTimeSlots && (
+                            <div className="flex gap-1 mt-1">
+                              {client.preferredTimeSlots.map(slot => (
+                                <Badge key={slot} variant="outline" className="text-xs">
+                                  {slot}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    Select a date to filter available clients
+                  </p>
+                </div>
               ) : availableClients.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No clients available on this day</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
                   {availableClients.map((client, index) => (
                     <Card key={client.id} data-testid={`card-client-${index}`}>
                       <CardContent className="p-3">
