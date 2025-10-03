@@ -37,11 +37,7 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
 
   const updateNotesMutation = useMutation({
     mutationFn: async ({ appointmentId, notes }: { appointmentId: string; notes: string }) => {
-      return await apiRequest(`/api/appointments/${appointmentId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes })
-      });
+      return await apiRequest('PUT', `/api/appointments/${appointmentId}`, { postAppointmentNotes: notes });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
@@ -238,18 +234,23 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
                             <strong>Notes:</strong> {stop.appointment.notes}
                           </div>
                         )}
+                        {stop.appointment.postAppointmentNotes && (
+                          <div className="text-sm text-muted-foreground mt-2 p-2 bg-muted/30 rounded border-l-2 border-accent" data-testid={`text-post-notes-${index}`}>
+                            <strong>Post-Appointment Notes:</strong> {stop.appointment.postAppointmentNotes}
+                          </div>
+                        )}
                         <div className="pt-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setEditingNotes({ 
                               appointmentId: stop.appointment.id, 
-                              notes: stop.appointment.notes || '' 
+                              notes: stop.appointment.postAppointmentNotes || '' 
                             })}
-                            data-testid={`button-edit-notes-${index}`}
+                            data-testid={`button-add-post-notes-${index}`}
                           >
                             <FileText className="w-4 h-4 mr-2" />
-                            {stop.appointment.notes ? 'Edit Notes' : 'Add Notes'}
+                            {stop.appointment.postAppointmentNotes ? 'Edit Post-Appointment Notes' : 'Add Post-Appointment Notes'}
                           </Button>
                         </div>
                       </div>
@@ -263,23 +264,23 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
         )}
       </CardContent>
 
-      {/* Notes Dialog */}
+      {/* Post-Appointment Notes Dialog */}
       <Dialog open={!!editingNotes} onOpenChange={(open) => !open && setEditingNotes(null)}>
         <DialogContent data-testid="dialog-edit-notes">
           <DialogHeader>
-            <DialogTitle>Appointment Notes</DialogTitle>
+            <DialogTitle>Post-Appointment Notes</DialogTitle>
             <DialogDescription>
-              Add or edit notes for this appointment. These notes will be saved and visible in your schedule.
+              Add notes after completing this appointment. Record client feedback, follow-up actions, or any observations.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Textarea
-              placeholder="Enter appointment notes..."
+              placeholder="Enter post-appointment notes..."
               value={editingNotes?.notes || ''}
               onChange={(e) => editingNotes && setEditingNotes({ ...editingNotes, notes: e.target.value })}
               rows={6}
               className="resize-none"
-              data-testid="textarea-notes"
+              data-testid="textarea-post-notes"
             />
           </div>
           <DialogFooter>
@@ -287,7 +288,7 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
               variant="outline"
               onClick={() => setEditingNotes(null)}
               disabled={updateNotesMutation.isPending}
-              data-testid="button-cancel-notes"
+              data-testid="button-cancel-post-notes"
             >
               Cancel
             </Button>
@@ -297,7 +298,7 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
                 notes: editingNotes.notes
               })}
               disabled={updateNotesMutation.isPending}
-              data-testid="button-save-notes"
+              data-testid="button-save-post-notes"
             >
               {updateNotesMutation.isPending ? 'Saving...' : 'Save Notes'}
             </Button>

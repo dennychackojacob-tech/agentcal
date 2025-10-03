@@ -37,6 +37,7 @@ export const appointments = pgTable("appointments", {
   duration: integer("duration").notNull().default(60), // minutes
   status: text("status").notNull().default("scheduled"), // scheduled, completed, cancelled
   notes: text("notes"),
+  postAppointmentNotes: text("post_appointment_notes"),
 });
 
 export const insertAgentSchema = createInsertSchema(agents).omit({ id: true });
