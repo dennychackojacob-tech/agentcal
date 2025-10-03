@@ -248,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Smart scheduling endpoint
   app.post("/api/smart-schedule", async (req, res) => {
     try {
-      const { agentId, date, startingLocation } = req.body;
+      const { agentId, date, startingLocation, selectedProperties } = req.body;
       
       if (!agentId || !date) {
         return res.status(400).json({ error: "agentId and date are required" });
@@ -265,8 +265,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Import smart scheduler
       const { generateSmartSchedule } = await import('./utils/smartScheduler');
       
-      // Generate optimized schedule
-      const result = await generateSmartSchedule(agentId, new Date(date), startLocation);
+      // Generate optimized schedule with selected properties filter
+      const result = await generateSmartSchedule(
+        agentId, 
+        new Date(date), 
+        startLocation,
+        "08:00",
+        selectedProperties || [] // Pass selected properties for filtering
+      );
       
       res.json(result);
     } catch (error) {

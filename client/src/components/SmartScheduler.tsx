@@ -78,12 +78,14 @@ export default function SmartScheduler({ agentId, onDateChange }: SmartScheduler
       const res = await apiRequest("POST", "/api/smart-schedule", {
         agentId,
         date: selectedDate.toISOString().split('T')[0],
-        startingLocation: { lat: 43.5890, lng: -79.6441 } // Mississauga
+        startingLocation: { lat: 43.5890, lng: -79.6441 }, // Mississauga
+        selectedProperties: Array.from(selectedPropertyIds) // Send selected property IDs
       });
       return res.json();
     },
     onSuccess: (data) => {
       setScheduleResult(data);
+      setSelectedPropertyIds(new Set()); // Clear selections after generation
       if (onDateChange && selectedDate) {
         onDateChange(selectedDate.toISOString().split('T')[0]);
       }

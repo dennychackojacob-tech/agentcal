@@ -33,7 +33,8 @@ export async function generateSmartSchedule(
   agentId: string,
   date: Date,
   startingLocation: { lat: number; lng: number },
-  startTime: string = "08:00" // Agent's starting time (default 8:00 AM)
+  startTime: string = "08:00", // Agent's starting time (default 8:00 AM)
+  selectedPropertyIds: string[] = [] // Optional: Filter to only these properties
 ): Promise<OptimizedScheduleResult> {
   // Get the day of the week for the date
   const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
@@ -61,6 +62,11 @@ export async function generateSmartSchedule(
     const preferences = await storage.getPreferencesByClient(client.id);
     
     for (const preference of preferences) {
+      // Filter by selected properties if provided
+      if (selectedPropertyIds.length > 0 && !selectedPropertyIds.includes(preference.propertyId)) {
+        continue;
+      }
+      
       const property = await storage.getProperty(preference.propertyId);
       if (!property) continue;
       
