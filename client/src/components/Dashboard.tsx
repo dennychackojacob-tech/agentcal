@@ -23,23 +23,29 @@ import type { DailySchedule, Property, Agent } from "@shared/schema";
 
 interface DashboardProps {
   agent: Agent;
-  todaySchedule: DailySchedule;
+  schedule: DailySchedule;
+  selectedDate: string;
   availableProperties: Property[];
   onScheduleProperty?: (propertyId: string) => void;
   onOptimizeRoute?: () => void;
+  onDateChange?: (date: string) => void;
 }
 
 export default function Dashboard({ 
   agent, 
-  todaySchedule, 
+  schedule, 
+  selectedDate,
   availableProperties,
   onScheduleProperty,
-  onOptimizeRoute 
+  onOptimizeRoute,
+  onDateChange 
 }: DashboardProps) {
   const [activeTab, setActiveTab] = useState("schedule");
 
-  const upcomingCount = todaySchedule.stops.length;
-  const nextAppointment = todaySchedule.stops[0];
+  const upcomingCount = schedule.stops.length;
+  const nextAppointment = schedule.stops[0];
+  
+  const scheduleDate = new Date(selectedDate);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', { 
@@ -65,7 +71,7 @@ export default function Dashboard({
               
               <div className="hidden md:flex items-center gap-1 text-sm text-muted-foreground">
                 <Calendar className="w-4 h-4" />
-                {new Date().toLocaleDateString('en-US', { 
+                {scheduleDate.toLocaleDateString('en-US', { 
                   weekday: 'long',
                   month: 'long', 
                   day: 'numeric',
@@ -111,7 +117,7 @@ export default function Dashboard({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Distance</p>
-                  <p className="text-2xl font-bold">{(todaySchedule.totalDistance * 1.60934).toFixed(1)} km</p>
+                  <p className="text-2xl font-bold">{(schedule.totalDistance * 1.60934).toFixed(1)} km</p>
                 </div>
                 <Route className="w-8 h-8 text-muted-foreground" />
               </div>
@@ -123,7 +129,7 @@ export default function Dashboard({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Travel Time</p>
-                  <p className="text-2xl font-bold">{Math.round(todaySchedule.totalTravelTime)}m</p>
+                  <p className="text-2xl font-bold">{Math.round(schedule.totalTravelTime)}m</p>
                 </div>
                 <Clock className="w-8 h-8 text-muted-foreground" />
               </div>
@@ -135,8 +141,8 @@ export default function Dashboard({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Route Status</p>
-                  <Badge className={todaySchedule.optimized ? "bg-accent text-accent-foreground" : ""}>
-                    {todaySchedule.optimized ? "Optimized" : "Not Optimized"}
+                  <Badge className={schedule.optimized ? "bg-accent text-accent-foreground" : ""}>
+                    {schedule.optimized ? "Optimized" : "Not Optimized"}
                   </Badge>
                 </div>
                 <Map className="w-8 h-8 text-muted-foreground" />
@@ -195,14 +201,14 @@ export default function Dashboard({
 
           <TabsContent value="schedule" className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Today's Schedule</h2>
+              <h2 className="text-2xl font-bold">{scheduleDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} Schedule</h2>
               <Button data-testid="button-add-appointment">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Appointment
               </Button>
             </div>
             <ScheduleTimeline 
-              schedule={todaySchedule}
+              schedule={schedule}
               onOptimize={onOptimizeRoute}
             />
           </TabsContent>
@@ -211,17 +217,17 @@ export default function Dashboard({
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">Route Map</h2>
               <div className="text-sm text-muted-foreground">
-                {todaySchedule.optimized ? "Route optimized" : "Route can be optimized"}
+                {schedule.optimized ? "Route optimized" : "Route can be optimized"}
               </div>
             </div>
             <RouteMap 
-              schedule={todaySchedule}
+              schedule={schedule}
               onOptimize={onOptimizeRoute}
             />
           </TabsContent>
 
           <TabsContent value="clients" className="space-y-6">
-            <SmartScheduler agentId={agent.id} />
+            <SmartScheduler agentId={agent.id} onDateChange={onDateChange} />
           </TabsContent>
 
           <TabsContent value="properties" className="space-y-6">

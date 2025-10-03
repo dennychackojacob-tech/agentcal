@@ -10,6 +10,7 @@ import type { Client } from "@shared/schema";
 
 interface SmartSchedulerProps {
   agentId: string;
+  onDateChange?: (date: string) => void;
 }
 
 interface SmartScheduleResult {
@@ -20,7 +21,7 @@ interface SmartScheduleResult {
   propertiesVisited: number;
 }
 
-export default function SmartScheduler({ agentId }: SmartSchedulerProps) {
+export default function SmartScheduler({ agentId, onDateChange }: SmartSchedulerProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [scheduleResult, setScheduleResult] = useState<SmartScheduleResult | null>(null);
 
@@ -47,6 +48,10 @@ export default function SmartScheduler({ agentId }: SmartSchedulerProps) {
     },
     onSuccess: (data) => {
       setScheduleResult(data);
+      // Update the main schedule date to show the newly created appointments
+      if (onDateChange && selectedDate) {
+        onDateChange(selectedDate.toISOString().split('T')[0]);
+      }
       // Invalidate schedule queries to refresh the schedule view
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
