@@ -235,11 +235,25 @@ export default function RouteMap({ schedule, onOptimize, className }: RouteMapPr
             )}
             {error && (
               <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
-                <div className="text-center p-4">
-                  <p className="text-destructive font-medium">{error}</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Please check your Google Maps API key configuration
+                <div className="text-center p-4 max-w-md">
+                  <p className="text-destructive font-medium mb-2">{error}</p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Please ensure your Google Maps API key has the <strong>Maps JavaScript API</strong> enabled:
                   </p>
+                  <ol className="text-left text-sm text-muted-foreground space-y-1 mb-3">
+                    <li>1. Go to Google Cloud Console</li>
+                    <li>2. Select your project</li>
+                    <li>3. Enable "Maps JavaScript API"</li>
+                    <li>4. Refresh this page</li>
+                  </ol>
+                  <a 
+                    href="https://console.cloud.google.com/apis/library/maps-backend.googleapis.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Enable Maps JavaScript API →
+                  </a>
                 </div>
               </div>
             )}
