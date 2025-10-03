@@ -1,7 +1,15 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, Car, Route, Zap } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Clock, MapPin, Car, Route, Zap, ArrowUpDown } from "lucide-react";
 import type { DailySchedule, RouteStop } from "@shared/schema";
 
 interface ScheduleTimelineProps {
@@ -11,6 +19,7 @@ interface ScheduleTimelineProps {
 }
 
 export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops }: ScheduleTimelineProps) {
+  const [sortBy, setSortBy] = useState<"optimized" | "time" | "client">("optimized");
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
@@ -26,11 +35,33 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   };
 
+  // Sort stops based on selected option
+  const getSortedStops = () => {
+    const stops = [...schedule.stops];
+    
+    switch (sortBy) {
+      case "client":
+        return stops.sort((a, b) => 
+          a.appointment.clientName.localeCompare(b.appointment.clientName)
+        );
+      case "time":
+        return stops.sort((a, b) => 
+          new Date(a.appointment.scheduledDate).getTime() - 
+          new Date(b.appointment.scheduledDate).getTime()
+        );
+      case "optimized":
+      default:
+        return stops;
+    }
+  };
+
+  const sortedStops = getSortedStops();
+
   return (
     <Card data-testid="card-schedule-timeline">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
             <CardTitle className="flex items-center gap-2">
               <Route className="w-5 h-5" />
               Daily Schedule - {new Date(schedule.date).toLocaleDateString('en-US', { 
@@ -60,22 +91,35 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
               </div>
             </div>
           </div>
-          {onOptimize && !schedule.optimized && (
-            <Button 
-              onClick={onOptimize}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground"
-              data-testid="button-optimize-route"
-            >
-              <Zap className="w-4 h-4 mr-2" />
-              Optimize Route
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+              <SelectTrigger className="w-40" data-testid="select-sort-by">
+                <ArrowUpDown className="w-4 h-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="optimized">Optimized Order</SelectItem>
+                <SelectItem value="time">By Time</SelectItem>
+                <SelectItem value="client">By Client</SelectItem>
+              </SelectContent>
+            </Select>
+            {onOptimize && !schedule.optimized && (
+              <Button 
+                onClick={onOptimize}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                data-testid="button-optimize-route"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                Optimize Route
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
 
       <CardContent>
         <div className="space-y-4">
-          {schedule.stops.map((stop, index) => {
+          {sortedStops.map((stop, index) => {
             const appointmentTime = new Date(stop.appointment.scheduledDate);
             const endTime = new Date(appointmentTime.getTime() + stop.appointment.duration * 60000);
 
