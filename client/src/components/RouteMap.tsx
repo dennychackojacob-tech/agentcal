@@ -1,7 +1,9 @@
+import { useEffect, useRef, useState } from "react";
+import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Map, Navigation, MapPin, Route, Zap } from "lucide-react";
+import { Map, Navigation, Route, Zap, Loader2 } from "lucide-react";
 import type { DailySchedule } from "@shared/schema";
 
 interface RouteMapProps {
@@ -11,24 +13,196 @@ interface RouteMapProps {
 }
 
 export default function RouteMap({ schedule, onOptimize, className }: RouteMapProps) {
-  // Mock map visualization - in a real app, this would integrate with a mapping service
-  const mapPoints = schedule.stops.map((stop, index) => ({
-    id: stop.property.id,
-    lat: parseFloat(stop.property.latitude || "0"),
-    lng: parseFloat(stop.property.longitude || "0"),
-    address: stop.property.address,
-    order: index + 1,
-    time: new Date(stop.appointment.scheduledDate).toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    })
-  }));
+  const mapRef = useRef<HTMLDivElement>(null);
+  const googleMapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const polylineRef = useRef<google.maps.Polyline | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const initMap = async () => {
+      if (!mapRef.current) return;
+
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        setError("Google Maps API key not found");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Set options once
+        setOptions({
+          apiKey: apiKey,
+          version: "weekly",
+        });
+
+        // Import the maps library
+        await importLibrary('maps');
+        
+        // Check if Google Maps loaded successfully
+        if (!google || !google.maps) {
+          throw new Error("Google Maps failed to load properly");
+        }
+
+        // Calculate center of all points
+        const validStops = schedule.stops.filter(
+          stop => stop.property.latitude && stop.property.longitude
+        );
+
+        if (validStops.length === 0) {
+          setError("No valid coordinates found for properties");
+          setIsLoading(false);
+          return;
+        }
+
+        const bounds = new google.maps.LatLngBounds();
+        validStops.forEach(stop => {
+          bounds.extend({
+            lat: parseFloat(stop.property.latitude!),
+            lng: parseFloat(stop.property.longitude!)
+          });
+        });
+
+        // Create map
+        const map = new google.maps.Map(mapRef.current, {
+          zoom: 12,
+          center: bounds.getCenter(),
+          mapTypeControl: true,
+          streetViewControl: false,
+          fullscreenControl: true,
+          zoomControl: true,
+        });
+
+        googleMapRef.current = map;
+
+        // Fit bounds to show all markers
+        map.fitBounds(bounds);
+
+        // Clear existing markers
+        markersRef.current.forEach(marker => marker.setMap(null));
+        markersRef.current = [];
+
+        // Add markers for each stop
+        const markers = validStops.map((stop, index) => {
+          const position = {
+            lat: parseFloat(stop.property.latitude!),
+            lng: parseFloat(stop.property.longitude!)
+          };
+
+          const marker = new google.maps.Marker({
+            position,
+            map,
+            label: {
+              text: String(index + 1),
+              color: "white",
+              fontSize: "14px",
+              fontWeight: "bold"
+            },
+            title: stop.property.address,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 20,
+              fillColor: schedule.optimized ? "#9333ea" : "#7c3aed",
+              fillOpacity: 1,
+              strokeColor: "white",
+              strokeWeight: 3,
+            }
+          });
+
+          // Add info window
+          const infoWindow = new google.maps.InfoWindow({
+            content: `
+              <div style="padding: 8px; max-width: 250px;">
+                <h4 style="margin: 0 0 8px 0; font-weight: 600;">${stop.property.address}</h4>
+                <p style="margin: 4px 0; font-size: 13px; color: #666;">
+                  ${stop.property.city}, ${stop.property.state} ${stop.property.zipCode}
+                </p>
+                <p style="margin: 4px 0; font-size: 13px;">
+                  <strong>Time:</strong> ${new Date(stop.appointment.scheduledDate).toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                  })}
+                </p>
+                <p style="margin: 4px 0; font-size: 13px;">
+                  <strong>Client:</strong> ${stop.appointment.clientName}
+                </p>
+                ${stop.estimatedTravelTime && index > 0 ? 
+                  `<p style="margin: 4px 0; font-size: 13px; color: #9333ea;">
+                    <strong>Travel time from previous:</strong> ${stop.estimatedTravelTime} min
+                  </p>` : ''}
+              </div>
+            `
+          });
+
+          marker.addListener("click", () => {
+            infoWindow.open(map, marker);
+          });
+
+          return marker;
+        });
+
+        markersRef.current = markers;
+
+        // Draw route polyline
+        if (polylineRef.current) {
+          polylineRef.current.setMap(null);
+        }
+
+        const path = validStops.map(stop => ({
+          lat: parseFloat(stop.property.latitude!),
+          lng: parseFloat(stop.property.longitude!)
+        }));
+
+        const polyline = new google.maps.Polyline({
+          path,
+          geodesic: true,
+          strokeColor: schedule.optimized ? "#9333ea" : "#7c3aed",
+          strokeOpacity: 0.8,
+          strokeWeight: 3,
+          icons: [{
+            icon: {
+              path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+              scale: 3,
+              fillColor: schedule.optimized ? "#9333ea" : "#7c3aed",
+              fillOpacity: 1,
+              strokeColor: "white",
+              strokeWeight: 1,
+            },
+            offset: "100%",
+            repeat: "100px"
+          }]
+        });
+
+        polyline.setMap(map);
+        polylineRef.current = polyline;
+
+        setIsLoading(false);
+      } catch (err) {
+        console.error("Error loading Google Maps:", err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(`Failed to load Google Maps: ${errorMessage}`);
+        setIsLoading(false);
+      }
+    };
+
+    initMap();
+
+    // Cleanup
+    return () => {
+      markersRef.current.forEach(marker => marker.setMap(null));
+      if (polylineRef.current) {
+        polylineRef.current.setMap(null);
+      }
+    };
+  }, [schedule]);
 
   return (
     <Card className={className} data-testid="card-route-map">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <CardTitle className="flex items-center gap-2">
             <Map className="w-5 h-5" />
             Route Map
@@ -49,92 +223,27 @@ export default function RouteMap({ schedule, onOptimize, className }: RouteMapPr
 
       <CardContent>
         <div className="space-y-4">
-          {/* Map Placeholder */}
-          <div className="relative bg-muted/30 rounded-lg h-64 border border-border overflow-hidden">
-            {/* Simulated Map Background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-green-50 dark:from-blue-950 dark:to-green-950" />
-            
-            {/* Route Line Visualization */}
-            <svg className="absolute inset-0 w-full h-full">
-              <defs>
-                <marker id="arrowhead" markerWidth="10" markerHeight="7" 
-                 refX="10" refY="3.5" orient="auto">
-                  <polygon points="0 0, 10 3.5, 0 7" 
-                    className={schedule.optimized ? "fill-accent" : "fill-primary"} />
-                </marker>
-              </defs>
-              
-              {mapPoints.slice(0, -1).map((point, index) => {
-                const nextPoint = mapPoints[index + 1];
-                const x1 = 20 + (index * 60);
-                const y1 = 80 + Math.sin(index * 0.5) * 30;
-                const x2 = 20 + ((index + 1) * 60);
-                const y2 = 80 + Math.sin((index + 1) * 0.5) * 30;
-                
-                return (
-                  <line
-                    key={`route-${index}`}
-                    x1={x1}
-                    y1={y1}
-                    x2={x2}
-                    y2={y2}
-                    className={schedule.optimized ? "stroke-accent" : "stroke-primary"}
-                    strokeWidth="3"
-                    strokeDasharray={schedule.optimized ? "0" : "5,5"}
-                    markerEnd="url(#arrowhead)"
-                  />
-                );
-              })}
-            </svg>
-
-            {/* Property Markers */}
-            {mapPoints.map((point, index) => {
-              const x = 20 + (index * 60);
-              const y = 80 + Math.sin(index * 0.5) * 30;
-              
-              return (
-                <div 
-                  key={point.id}
-                  className="absolute transform -translate-x-1/2 -translate-y-1/2"
-                  style={{ left: x, top: y }}
-                  data-testid={`map-marker-${index}`}
-                >
-                  <div className={`
-                    w-8 h-8 rounded-full border-2 bg-background flex items-center justify-center font-bold text-sm
-                    ${schedule.optimized ? 'border-accent text-accent' : 'border-primary text-primary'}
-                  `}>
-                    {point.order}
-                  </div>
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1">
-                    <div className="bg-background/90 backdrop-blur-sm border border-border rounded px-2 py-1 text-xs whitespace-nowrap shadow-sm">
-                      {point.time}
-                    </div>
-                  </div>
+          {/* Google Map */}
+          <div className="relative bg-muted/30 rounded-lg h-96 border border-border overflow-hidden">
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading map...</p>
                 </div>
-              );
-            })}
-
-            {/* Map Controls */}
-            <div className="absolute top-4 right-4 flex flex-col gap-2">
-              <Button size="sm" variant="outline" className="w-8 h-8 p-0" data-testid="button-map-zoom-in">
-                +
-              </Button>
-              <Button size="sm" variant="outline" className="w-8 h-8 p-0" data-testid="button-map-zoom-out">
-                -
-              </Button>
-            </div>
-
-            {/* Navigation Button */}
-            <div className="absolute bottom-4 right-4">
-              <Button 
-                size="sm" 
-                className="bg-primary/90 backdrop-blur-sm"
-                data-testid="button-start-navigation"
-              >
-                <Navigation className="w-4 h-4 mr-2" />
-                Start Navigation
-              </Button>
-            </div>
+              </div>
+            )}
+            {error && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
+                <div className="text-center p-4">
+                  <p className="text-destructive font-medium">{error}</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Please check your Google Maps API key configuration
+                  </p>
+                </div>
+              </div>
+            )}
+            <div ref={mapRef} className="w-full h-full" data-testid="google-map-container" />
           </div>
 
           {/* Route Summary */}
@@ -163,8 +272,24 @@ export default function RouteMap({ schedule, onOptimize, className }: RouteMapPr
               {schedule.stops.map((stop, index) => (
                 <div 
                   key={stop.appointment.id} 
-                  className="flex items-center gap-3 text-sm p-2 rounded bg-muted/30"
+                  className="flex items-center gap-3 text-sm p-2 rounded bg-muted/30 hover-elevate cursor-pointer"
                   data-testid={`route-stop-${index}`}
+                  onClick={() => {
+                    // Center map on this marker
+                    if (googleMapRef.current && stop.property.latitude && stop.property.longitude) {
+                      const position = {
+                        lat: parseFloat(stop.property.latitude),
+                        lng: parseFloat(stop.property.longitude)
+                      };
+                      googleMapRef.current.panTo(position);
+                      googleMapRef.current.setZoom(16);
+                      
+                      // Trigger marker click to show info window
+                      if (markersRef.current[index]) {
+                        google.maps.event.trigger(markersRef.current[index], 'click');
+                      }
+                    }
+                  }}
                 >
                   <div className={`
                     w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
