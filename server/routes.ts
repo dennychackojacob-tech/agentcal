@@ -245,6 +245,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Smart scheduling endpoint
+  app.post("/api/smart-schedule", async (req, res) => {
+    try {
+      const { agentId, date, startingLocation } = req.body;
+      
+      if (!agentId || !date) {
+        return res.status(400).json({ error: "agentId and date are required" });
+      }
+
+      const agent = await storage.getAgent(agentId);
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      // Default starting location (Mississauga) if not provided
+      const startLocation = startingLocation || { lat: 43.5890, lng: -79.6441 };
+
+      // Import smart scheduler
+      const { generateSmartSchedule } = await import('./utils/smartScheduler');
+      
+      // Generate optimized schedule
+      const result = await generateSmartSchedule(agentId, new Date(date), startLocation);
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Smart scheduling error:', error);
+      res.status(500).json({ error: "Failed to generate smart schedule" });
+    }
+  });
+
+  // Get clients
+  app.get("/api/clients", async (req, res) => {
+    try {
+      const { agentId } = req.query;
+      
+      if (agentId) {
+        const clients = await storage.getClientsByAgent(agentId as string);
+        res.json(clients);
+      } else {
+        const clients = await storage.getAllClients();
+        res.json(clients);
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch clients" });
+    }
+  });
+
   // Get daily schedule endpoint
   app.get("/api/schedule/:agentId/:date", async (req, res) => {
     try {
