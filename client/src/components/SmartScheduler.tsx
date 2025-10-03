@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { Sparkles, MapPin, Users, CheckCircle2, Clock, Route, Calendar as CalendarIcon } from "lucide-react";
-import type { Client } from "@shared/schema";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sparkles, MapPin, Users, CheckCircle2, Clock, Route, Calendar as CalendarIcon, Home, User } from "lucide-react";
+import type { Client, Property, PropertyPreference } from "@shared/schema";
 
 interface SmartSchedulerProps {
   agentId: string;
@@ -23,6 +25,8 @@ interface SmartScheduleResult {
 
 export default function SmartScheduler({ agentId, onDateChange }: SmartSchedulerProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
   const [scheduleResult, setScheduleResult] = useState<SmartScheduleResult | null>(null);
 
   // Fetch clients
@@ -34,16 +38,37 @@ export default function SmartScheduler({ agentId, onDateChange }: SmartScheduler
     }
   });
 
-  // Fetch showing slots when date is selected
-  const { data: showingSlots } = useQuery({
-    queryKey: ['/api/showing-slots', selectedDate?.toISOString().split('T')[0]],
+  // Fetch all properties
+  const { data: properties } = useQuery<Property[]>({
+    queryKey: ['/api/properties'],
     queryFn: async () => {
-      if (!selectedDate) return [];
-      const res = await fetch(`/api/showing-slots?date=${selectedDate.toISOString().split('T')[0]}`);
+      const res = await fetch('/api/properties');
+      return res.json();
+    }
+  });
+
+  // Fetch client's property preferences
+  const { data: preferences } = useQuery<PropertyPreference[]>({
+    queryKey: ['/api/property-preferences', selectedClientId],
+    queryFn: async () => {
+      if (!selectedClientId) return [];
+      const res = await fetch(`/api/property-preferences?clientId=${selectedClientId}`);
       return res.json();
     },
-    enabled: !!selectedDate
+    enabled: !!selectedClientId
   });
+
+  // Get clients available for selected date
+  const getAvailableClients = () => {
+    if (!selectedDate || !clients) return [];
+    
+    const dayOfWeek = selectedDate.toLocaleDateString('en-US', { weekday: 'long' });
+    return clients.filter(client => 
+      client.preferredDays && client.preferredDays.includes(dayOfWeek)
+    );
+  };
+
+  const availableClients = getAvailableClients();
 
   // Smart schedule mutation
   const smartScheduleMutation = useMutation({
@@ -59,32 +84,42 @@ export default function SmartScheduler({ agentId, onDateChange }: SmartScheduler
     },
     onSuccess: (data) => {
       setScheduleResult(data);
-      // Update the main schedule date to show the newly created appointments
       if (onDateChange && selectedDate) {
         onDateChange(selectedDate.toISOString().split('T')[0]);
       }
-      // Invalidate queries to refresh all views
       queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/showing-slots'] });
     }
   });
 
-  // Get clients available for selected date
-  const getAvailableClients = () => {
-    if (!selectedDate || !clients) return [];
-    
-    const dayOfWeek = selectedDate.toLocaleDateString('en-US', { weekday: 'long' });
-    return clients.filter(client => 
-      client.preferredDays && client.preferredDays.includes(dayOfWeek)
-    );
+  const handleDateSelect = (date: Date | undefined) => {
+    setSelectedDate(date);
+    setScheduleResult(null);
   };
-
-  const availableClients = getAvailableClients();
 
   const handleGenerateSchedule = () => {
     smartScheduleMutation.mutate();
   };
+
+  const togglePropertySelection = (propertyId: string) => {
+    const newSet = new Set(selectedPropertyIds);
+    if (newSet.has(propertyId)) {
+      newSet.delete(propertyId);
+    } else {
+      newSet.add(propertyId);
+    }
+    setSelectedPropertyIds(newSet);
+  };
+
+  const getClientProperties = () => {
+    if (!preferences || !properties) return [];
+    return preferences
+      .map(pref => properties.find(p => p.id === pref.propertyId))
+      .filter(Boolean) as Property[];
+  };
+
+  const clientProperties = getClientProperties();
 
   return (
     <div className="space-y-6">
@@ -96,97 +131,118 @@ export default function SmartScheduler({ agentId, onDateChange }: SmartScheduler
             Smart Schedule Generator
           </CardTitle>
           <CardDescription>
-            Automatically create an optimized schedule based on client availability, property preferences, and showing slots
+            Select a date, choose client properties, and generate an optimized schedule
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Calendar Selection */}
-            <div>
-              <h3 className="text-sm font-medium mb-3">Select Date</h3>
+          {/* Calendar Selection */}
+          <div>
+            <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <CalendarIcon className="w-4 h-4" />
+              Select Date
+            </h3>
+            <div className="flex justify-center">
               <Calendar
                 mode="single"
                 selected={selectedDate}
-                onSelect={setSelectedDate}
-                disabled={(date) => date < new Date()}
+                onSelect={handleDateSelect}
                 className="rounded-md border"
-                data-testid="calendar-smart-schedule"
+                data-testid="calendar-schedule-date"
               />
-            </div>
-
-            {/* Available Clients */}
-            <div>
-              <h3 className="text-sm font-medium mb-3">
-                {selectedDate ? `Available Clients (${availableClients.length})` : `All Clients (${clients?.length || 0})`}
-              </h3>
-              {clientsLoading ? (
-                <p className="text-sm text-muted-foreground">Loading clients...</p>
-              ) : !clients || clients.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No clients found</p>
-              ) : !selectedDate ? (
-                <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {clients.map((client, index) => (
-                    <Card key={client.id} data-testid={`card-client-${index}`}>
-                      <CardContent className="p-3">
-                        <div>
-                          <p className="font-medium" data-testid={`text-client-name-${index}`}>{client.name}</p>
-                          <p className="text-xs text-muted-foreground">{client.notes}</p>
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {client.preferredDays?.map(day => (
-                              <Badge key={day} variant="secondary" className="text-xs">
-                                {day}
-                              </Badge>
-                            ))}
-                          </div>
-                          {client.preferredTimeSlots && (
-                            <div className="flex gap-1 mt-1">
-                              {client.preferredTimeSlots.map(slot => (
-                                <Badge key={slot} variant="outline" className="text-xs">
-                                  {slot}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  <p className="text-xs text-muted-foreground text-center pt-2">
-                    Select a date to filter available clients
-                  </p>
-                </div>
-              ) : availableClients.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No clients available on this day</p>
-              ) : (
-                <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {availableClients.map((client, index) => (
-                    <Card key={client.id} data-testid={`card-client-${index}`}>
-                      <CardContent className="p-3">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-medium" data-testid={`text-client-name-${index}`}>{client.name}</p>
-                            <p className="text-xs text-muted-foreground">{client.notes}</p>
-                            {client.preferredTimeSlots && (
-                              <div className="flex gap-1 mt-2">
-                                {client.preferredTimeSlots.map(slot => (
-                                  <Badge key={slot} variant="outline" className="text-xs">
-                                    {slot}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
+          {/* Client Tabs - Only show when date is selected */}
+          {selectedDate && (
+            <div>
+              <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Available Clients ({availableClients.length})
+              </h3>
+              
+              {availableClients.length === 0 ? (
+                <Card>
+                  <CardContent className="p-6">
+                    <p className="text-sm text-muted-foreground text-center">
+                      No clients available on this day
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Tabs value={selectedClientId || ""} onValueChange={setSelectedClientId}>
+                  <TabsList className="w-full grid" style={{ gridTemplateColumns: `repeat(${availableClients.length}, 1fr)` }}>
+                    {availableClients.map((client) => (
+                      <TabsTrigger
+                        key={client.id}
+                        value={client.id}
+                        data-testid={`trigger-client-${client.id}`}
+                        className="flex items-center gap-2"
+                      >
+                        <User className="w-4 h-4" />
+                        <span className="hidden sm:inline">{client.name}</span>
+                        <span className="sm:hidden">{client.name.split(' ')[0]}</span>
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+
+                  {availableClients.map((client) => (
+                    <TabsContent key={client.id} value={client.id} className="mt-4">
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base flex items-center justify-between">
+                            <span>{client.name}'s Properties</span>
+                            <Badge variant="secondary">
+                              {clientProperties.length} assigned
+                            </Badge>
+                          </CardTitle>
+                          <CardDescription>
+                            {client.notes || "No notes available"}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          {clientProperties.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-6">
+                              No properties assigned to this client. Go to Properties tab to assign properties.
+                            </p>
+                          ) : (
+                            <div className="space-y-3">
+                              {clientProperties.map((property) => (
+                                <div
+                                  key={property.id}
+                                  className="flex items-start gap-3 p-3 rounded-md border hover-elevate"
+                                  data-testid={`property-item-${property.id}`}
+                                >
+                                  <Checkbox
+                                    checked={selectedPropertyIds.has(property.id)}
+                                    onCheckedChange={() => togglePropertySelection(property.id)}
+                                    data-testid={`checkbox-property-${property.id}`}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <Home className="w-4 h-4 text-muted-foreground" />
+                                      <Badge variant="secondary" className="text-xs">{property.propertyType}</Badge>
+                                    </div>
+                                    <h4 className="font-medium text-sm">{property.address}</h4>
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <MapPin className="w-3 h-3" />
+                                      {property.city}, {property.state}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              )}
+            </div>
+          )}
+
           {/* Generate Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-4 border-t">
             <Button
               onClick={handleGenerateSchedule}
               disabled={!selectedDate || availableClients.length === 0 || smartScheduleMutation.isPending}
@@ -251,49 +307,6 @@ export default function SmartScheduler({ agentId, onDateChange }: SmartScheduler
             <div className="text-sm text-muted-foreground text-center pt-4 border-t">
               {scheduleResult.appointments.length} appointments created and showing slots booked. 
               View the schedule in the Schedule tab or Map View.
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Property Availability */}
-      {selectedDate && showingSlots && showingSlots.length > 0 && (
-        <Card data-testid="card-property-availability">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-accent" />
-              Property Showing Availability
-            </CardTitle>
-            <CardDescription>
-              {showingSlots.length} time slots available on {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {showingSlots
-                .sort((a: any, b: any) => a.startTime.localeCompare(b.startTime))
-                .map((slot: any, index: number) => (
-                  <div key={slot.id || index} className="flex items-center justify-between p-3 rounded-lg border" data-testid={`slot-${index}`}>
-                    <div className="flex-1">
-                      <p className="font-medium" data-testid={`text-property-address-slot-${index}`}>
-                        {slot.property.address}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {slot.property.city}, {slot.property.state}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge variant={slot.isBooked === "true" ? "secondary" : "default"} data-testid={`badge-slot-time-${index}`}>
-                        {slot.startTime} - {slot.endTime}
-                      </Badge>
-                      {slot.isBooked === "true" && (
-                        <Badge variant="outline" className="text-xs">
-                          Booked
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
             </div>
           </CardContent>
         </Card>

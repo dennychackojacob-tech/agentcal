@@ -19,6 +19,7 @@ import PropertyCard from "./PropertyCard";
 import ScheduleTimeline from "./ScheduleTimeline";
 import RouteMap from "./RouteMap";
 import SmartScheduler from "./SmartScheduler";
+import PropertiesManager from "./PropertiesManager";
 import type { DailySchedule, Property, Agent } from "@shared/schema";
 
 interface DashboardProps {
@@ -231,23 +232,7 @@ export default function Dashboard({
           </TabsContent>
 
           <TabsContent value="properties" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Available Properties</h2>
-              <Button data-testid="button-add-property">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Property
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {availableProperties.slice(0, 6).map((property) => (
-                <PropertyCard
-                  key={property.id}
-                  property={property}
-                  onSchedule={() => onScheduleProperty?.(property.id)}
-                  onViewDetails={() => console.log('View property details:', property.id)}
-                />
-              ))}
-            </div>
+            <PropertiesManager agentId={agent.id} properties={availableProperties} />
           </TabsContent>
         </Tabs>
       </main>

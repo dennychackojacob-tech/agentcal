@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertAgentSchema, insertPropertySchema, insertAppointmentSchema } from "@shared/schema";
+import { insertAgentSchema, insertPropertySchema, insertAppointmentSchema, insertPropertyPreferenceSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -289,6 +289,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch clients" });
+    }
+  });
+
+  // Property Preference routes
+  app.get("/api/property-preferences", async (req, res) => {
+    try {
+      const { clientId } = req.query;
+      
+      if (clientId) {
+        const preferences = await storage.getPreferencesByClient(clientId as string);
+        res.json(preferences);
+      } else {
+        res.status(400).json({ error: "clientId is required" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch property preferences" });
+    }
+  });
+
+  app.post("/api/property-preferences", async (req, res) => {
+    try {
+      const validatedData = insertPropertyPreferenceSchema.parse(req.body);
+      const preference = await storage.createPropertyPreference(validatedData);
+      res.status(201).json(preference);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create property preference" });
+    }
+  });
+
+  app.delete("/api/property-preferences/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deletePropertyPreference(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Property preference not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete property preference" });
     }
   });
 
