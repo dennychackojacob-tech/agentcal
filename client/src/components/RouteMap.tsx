@@ -20,6 +20,36 @@ export default function RouteMap({ schedule, onOptimize, className }: RouteMapPr
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const startNavigation = () => {
+    if (schedule.stops.length === 0) return;
+
+    // Build Google Maps directions URL with all stops
+    const origin = schedule.stops[0];
+    const destination = schedule.stops[schedule.stops.length - 1];
+    const waypoints = schedule.stops.slice(1, -1);
+
+    // Format addresses for URL
+    const formatAddress = (stop: typeof schedule.stops[0]) => {
+      return encodeURIComponent(
+        `${stop.property.address}, ${stop.property.city}, ${stop.property.state} ${stop.property.zipCode}`
+      );
+    };
+
+    let url = `https://www.google.com/maps/dir/?api=1`;
+    url += `&origin=${formatAddress(origin)}`;
+    url += `&destination=${formatAddress(destination)}`;
+    
+    if (waypoints.length > 0) {
+      const waypointStr = waypoints.map(formatAddress).join('|');
+      url += `&waypoints=${waypointStr}`;
+    }
+    
+    url += `&travelmode=driving`;
+
+    // Open in new tab
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   useEffect(() => {
     const initMap = async () => {
       if (!mapRef.current) return;
@@ -261,19 +291,32 @@ export default function RouteMap({ schedule, onOptimize, className }: RouteMapPr
           </div>
 
           {/* Route Summary */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
-                {(schedule.totalDistance * 1.60934).toFixed(1)}
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">
+                  {(schedule.totalDistance * 1.60934).toFixed(1)}
+                </div>
+                <div className="text-sm text-muted-foreground">Total Kilometers</div>
               </div>
-              <div className="text-sm text-muted-foreground">Total Kilometers</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
-                {Math.round(schedule.totalTravelTime)}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">
+                  {Math.round(schedule.totalTravelTime)}
+                </div>
+                <div className="text-sm text-muted-foreground">Travel Minutes</div>
               </div>
-              <div className="text-sm text-muted-foreground">Travel Minutes</div>
             </div>
+            
+            {/* Start Navigation Button */}
+            <Button 
+              onClick={startNavigation}
+              className="w-full bg-primary hover:bg-primary/90"
+              size="lg"
+              data-testid="button-start-navigation"
+            >
+              <Navigation className="w-4 h-4 mr-2" />
+              Start Navigation
+            </Button>
           </div>
 
           {/* Stop List */}
