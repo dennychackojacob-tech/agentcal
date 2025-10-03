@@ -32,7 +32,8 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 export async function generateSmartSchedule(
   agentId: string,
   date: Date,
-  startingLocation: { lat: number; lng: number }
+  startingLocation: { lat: number; lng: number },
+  startTime: string = "08:00" // Agent's starting time (default 8:00 AM)
 ): Promise<OptimizedScheduleResult> {
   // Get the day of the week for the date
   const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
@@ -97,11 +98,17 @@ export async function generateSmartSchedule(
     return a.slot.startTime.localeCompare(b.slot.startTime);
   });
 
-  // Step 4: Optimize route using nearest neighbor algorithm
+  // Step 4: Build chronological schedule with travel-time awareness
   const scheduledAppointments: Appointment[] = [];
   const visitedSlots = new Set<string>();
-  const visitedClientProperties = new Set<string>(); // Track client-property pairs
+  const visitedClientProperties = new Set<string>();
   let currentLocation = startingLocation;
+  
+  // Initialize current time with agent's start time
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  let currentTime = new Date(date);
+  currentTime.setHours(startHour, startMinute, 0, 0);
+  
   let totalDistance = 0;
   let totalTravelTime = 0;
 
@@ -116,73 +123,109 @@ export async function generateSmartSchedule(
     }
   }
 
-  // Now optimize the route through selected candidates
+  // Helper function to parse time slot to minutes since midnight
+  const timeToMinutes = (timeStr: string): number => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  // Helper function to calculate travel time in minutes
+  const calculateTravelTime = (distance: number): number => {
+    return Math.ceil((distance / 35) * 60); // 35 mph average speed, rounded up
+  };
+
+  // Build schedule chronologically
   while (selectedCandidates.length > 0) {
-    // Find nearest unscheduled property
-    let nearestIndex = 0;
+    let bestCandidate: ScheduleCandidate | null = null;
+    let bestCandidateIndex = -1;
     let shortestDistance = Infinity;
 
+    // Find the best candidate that fits chronologically
     for (let i = 0; i < selectedCandidates.length; i++) {
       const candidate = selectedCandidates[i];
-      if (!candidate.property.latitude || !candidate.property.longitude) continue;
       
+      if (!candidate.property.latitude || !candidate.property.longitude) continue;
+      if (visitedSlots.has(candidate.slot.id)) continue;
+
+      // Calculate distance and travel time to this property
       const distance = calculateDistance(
         currentLocation.lat,
         currentLocation.lng,
         parseFloat(candidate.property.latitude),
         parseFloat(candidate.property.longitude)
       );
+      const travelTimeMinutes = calculateTravelTime(distance);
 
-      if (distance < shortestDistance && !visitedSlots.has(candidate.slot.id)) {
+      // Check if this slot is feasible given current time
+      if (currentTime) {
+        const currentEndMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+        const earliestNextStart = currentEndMinutes + travelTimeMinutes;
+        const slotStartMinutes = timeToMinutes(candidate.slot.startTime);
+
+        // Skip if slot starts before we can arrive
+        if (slotStartMinutes < earliestNextStart) {
+          continue;
+        }
+      }
+
+      // Among feasible candidates, choose the one with shortest distance
+      if (distance < shortestDistance) {
         shortestDistance = distance;
-        nearestIndex = i;
+        bestCandidate = candidate;
+        bestCandidateIndex = i;
       }
     }
 
-    const selected = selectedCandidates[nearestIndex];
+    // If no feasible candidate found, we're done
+    if (!bestCandidate || bestCandidateIndex === -1) {
+      break;
+    }
+
+    // Schedule this appointment
+    const [startHour, startMinute] = bestCandidate.slot.startTime.split(':').map(Number);
+    const [endHour, endMinute] = bestCandidate.slot.endTime.split(':').map(Number);
     
-    // Check if slot is still available
-    if (!visitedSlots.has(selected.slot.id)) {
-      // Create appointment
-      const [startHour, startMinute] = selected.slot.startTime.split(':').map(Number);
-      const appointmentDate = new Date(date);
-      appointmentDate.setHours(startHour, startMinute, 0, 0);
+    const appointmentStartDate = new Date(date);
+    appointmentStartDate.setHours(startHour, startMinute, 0, 0);
+    
+    const appointmentEndDate = new Date(date);
+    appointmentEndDate.setHours(endHour, endMinute, 0, 0);
 
-      const appointment = await storage.createAppointment({
-        agentId,
-        propertyId: selected.property.id,
-        clientId: selected.client.id,
-        clientName: selected.client.name,
-        clientEmail: selected.client.email || undefined,
-        clientPhone: selected.client.phone || undefined,
-        scheduledDate: appointmentDate,
-        duration: 60,
-        status: 'scheduled',
-        notes: `Smart scheduled - ${selected.client.notes || 'No notes'}`
-      });
+    const appointment = await storage.createAppointment({
+      agentId,
+      propertyId: bestCandidate.property.id,
+      clientId: bestCandidate.client.id,
+      clientName: bestCandidate.client.name,
+      clientEmail: bestCandidate.client.email || undefined,
+      clientPhone: bestCandidate.client.phone || undefined,
+      scheduledDate: appointmentStartDate,
+      duration: (endHour * 60 + endMinute) - (startHour * 60 + startMinute),
+      status: 'scheduled',
+      notes: `Smart scheduled - ${bestCandidate.client.notes || 'No notes'}`
+    });
 
-      // Mark slot as booked
-      await storage.updateShowingSlot(selected.slot.id, {
-        isBooked: 'true',
-        bookedBy: selected.client.id
-      });
+    // Mark slot as booked
+    await storage.updateShowingSlot(bestCandidate.slot.id, {
+      isBooked: 'true',
+      bookedBy: bestCandidate.client.id
+    });
 
-      scheduledAppointments.push(appointment);
-      visitedSlots.add(selected.slot.id);
+    scheduledAppointments.push(appointment);
+    visitedSlots.add(bestCandidate.slot.id);
 
-      // Update current location and totals
-      if (selected.property.latitude && selected.property.longitude) {
-        totalDistance += shortestDistance;
-        totalTravelTime += (shortestDistance / 35) * 60; // Assuming 35 mph average speed
-        currentLocation = {
-          lat: parseFloat(selected.property.latitude),
-          lng: parseFloat(selected.property.longitude)
-        };
-      }
+    // Update current location, time, and totals
+    if (bestCandidate.property.latitude && bestCandidate.property.longitude) {
+      totalDistance += shortestDistance;
+      totalTravelTime += calculateTravelTime(shortestDistance);
+      currentLocation = {
+        lat: parseFloat(bestCandidate.property.latitude),
+        lng: parseFloat(bestCandidate.property.longitude)
+      };
+      currentTime = appointmentEndDate;
     }
 
-    // Remove from candidates
-    selectedCandidates.splice(nearestIndex, 1);
+    // Remove scheduled candidate
+    selectedCandidates.splice(bestCandidateIndex, 1);
   }
 
   const uniqueClients = new Set(scheduledAppointments.map(a => a.clientId)).size;
