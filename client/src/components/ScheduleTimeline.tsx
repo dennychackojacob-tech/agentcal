@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Clock, MapPin, Car, Route, Zap, ArrowUpDown, FileText } from "lucide-react";
+import { Clock, MapPin, Car, Route, Zap, ArrowUpDown, FileText, Filter } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -136,23 +136,32 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
         </div>
       </CardHeader>
 
-      {/* Client Filter Tabs */}
+      {/* Client Filter Dropdown */}
       <div className="px-6 pb-4 border-b">
-        <Tabs value={selectedClient} onValueChange={setSelectedClient}>
-          <TabsList className="inline-flex gap-1">
-            <TabsTrigger value="all" data-testid="tab-all-clients">
-              All Clients ({schedule.stops.length})
-            </TabsTrigger>
-            {clients.map((client) => {
-              const count = schedule.stops.filter(s => s.appointment.clientName === client).length;
-              return (
-                <TabsTrigger key={client} value={client} data-testid={`tab-client-${client.replace(/\s+/g, '-').toLowerCase()}`}>
-                  {client} ({count})
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-2 text-sm font-medium shrink-0">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <span>Filter by Client:</span>
+          </div>
+          <Select value={selectedClient} onValueChange={setSelectedClient}>
+            <SelectTrigger className="w-full sm:w-[280px]" data-testid="select-client-filter">
+              <SelectValue placeholder="All Clients" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" data-testid="select-all-clients">
+                All Clients ({schedule.stops.length})
+              </SelectItem>
+              {clients.map((client) => {
+                const count = schedule.stops.filter(s => s.appointment.clientName === client).length;
+                return (
+                  <SelectItem key={client} value={client} data-testid={`select-client-${client.replace(/\s+/g, '-').toLowerCase()}`}>
+                    {client} ({count})
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <CardContent>
