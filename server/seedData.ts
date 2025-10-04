@@ -3,8 +3,8 @@ import type { InsertAgent, InsertProperty, InsertAppointment, InsertClient, Inse
 
 export async function seedData() {
   // Check if data already exists
-  const existingAgents = await storage.getAllAgents();
-  if (existingAgents.length > 0) {
+  const existingBookingRequests = await storage.getAllBookingRequests();
+  if (existingBookingRequests.length > 0) {
     console.log('Data already seeded, skipping...');
     return;
   }
