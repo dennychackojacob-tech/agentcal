@@ -213,7 +213,12 @@ export function BookingQueue({ agentId }: { agentId: string }) {
                         Confirm Booking
                       </Button>
                       
-                      <Dialog>
+                      <Dialog open={selectedRequestId === request.id} onOpenChange={(open) => {
+                        if (!open) {
+                          setRejectReason("");
+                          setSelectedRequestId(null);
+                        }
+                      }}>
                         <DialogTrigger asChild>
                           <Button
                             size="sm"
