@@ -340,6 +340,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get a single showing slot by ID
+  app.get("/api/showing-slots/:id", async (req, res) => {
+    try {
+      const slot = await storage.getShowingSlot(req.params.id);
+      if (!slot) {
+        return res.status(404).json({ error: "Showing slot not found" });
+      }
+      res.json(slot);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get showing slots for a date
   app.get("/api/showing-slots", async (req, res) => {
     try {
