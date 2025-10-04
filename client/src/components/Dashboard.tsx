@@ -183,29 +183,31 @@ export default function Dashboard({
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          {/* Desktop Tabs - Hidden on mobile */}
-          <TabsList className="hidden md:grid w-full grid-cols-5" data-testid="dashboard-tabs-desktop">
-            <TabsTrigger value="schedule" className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Schedule
-            </TabsTrigger>
-            <TabsTrigger value="map" className="flex items-center gap-2">
-              <Map className="w-4 h-4" />
-              Map View
-            </TabsTrigger>
-            <TabsTrigger value="clients" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Clients
-            </TabsTrigger>
-            <TabsTrigger value="properties" className="flex items-center gap-2">
-              <Home className="w-4 h-4" />
-              Properties
-            </TabsTrigger>
-            <TabsTrigger value="bookings" className="flex items-center gap-2">
-              <ClipboardList className="w-4 h-4" />
-              Bookings
-            </TabsTrigger>
-          </TabsList>
+          {/* Desktop Tabs - Scrollable slider */}
+          <div className="hidden md:block w-full overflow-x-auto" data-testid="dashboard-tabs-desktop">
+            <TabsList className="inline-flex w-auto min-w-full">
+              <TabsTrigger value="schedule" className="flex items-center gap-2 whitespace-nowrap">
+                <Calendar className="w-4 h-4" />
+                Schedule
+              </TabsTrigger>
+              <TabsTrigger value="map" className="flex items-center gap-2 whitespace-nowrap">
+                <Map className="w-4 h-4" />
+                Map View
+              </TabsTrigger>
+              <TabsTrigger value="clients" className="flex items-center gap-2 whitespace-nowrap">
+                <Users className="w-4 h-4" />
+                Clients
+              </TabsTrigger>
+              <TabsTrigger value="properties" className="flex items-center gap-2 whitespace-nowrap">
+                <Home className="w-4 h-4" />
+                Properties
+              </TabsTrigger>
+              <TabsTrigger value="bookings" className="flex items-center gap-2 whitespace-nowrap">
+                <ClipboardList className="w-4 h-4" />
+                Bookings
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="schedule" className="space-y-6">
             <div className="flex items-center justify-between">

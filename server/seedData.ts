@@ -13,8 +13,8 @@ export async function seedData() {
 
   // Create sample agent
   const agent: InsertAgent = {
-    name: "Sarah Johnson",
-    email: "sarah@realestate.com",
+    name: "Denny",
+    email: "denny@realestate.com",
     phone: "(555) 123-4567"
   };
   const createdAgent = await storage.createAgent(agent);
