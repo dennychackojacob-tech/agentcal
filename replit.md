@@ -4,6 +4,8 @@
 RouteWise is an intelligent scheduling application designed specifically for real estate agents to manage property showings and optimize travel routes. The app calculates distances between properties and suggests the most efficient visiting sequence to minimize travel time and maximize productivity.
 
 ## Recent Changes
+- **2025-10-04**: Added deployment health check fixes - `/health` endpoint for autoscale deployment verification, deferred database seeding to after server startup for fast deployment response times
+- **2025-10-04**: Implemented UX improvements - vertical client card selection (replacing dropdown), tab-only content display (stats cards hidden on non-Schedule tabs)
 - **2025-10-04**: Implemented Automated Booking Workflow - intelligent system that searches available property showing times, generates booking requests based on distance/time feasibility, and manages listing agent confirmations via Booking Queue UI with confirm/reject actions
 - **2025-10-03**: Added Smart Schedule Generator - agents can select a date, view available clients, and automatically generate optimized schedules considering client availability, property preferences, and showing time slots. Includes automatic date synchronization with Schedule tab.
 - **2025-10-03**: Added Google Maps navigation - "Start Navigation" button opens turn-by-turn directions with all route stops
@@ -57,5 +59,10 @@ RouteWise is an intelligent scheduling application designed specifically for rea
 - MLS system integration for automatic property data sync
 - SMS/email notification system
 
+## Deployment Configuration
+- **Health Check Endpoint**: GET `/health` returns 200 OK with JSON status for autoscale deployment verification
+- **Startup Sequence**: Server listens immediately on port 5000, database seeding happens after server is ready
+- **Fast Startup**: Optimized for autoscale deployments with quick health check responses
+
 ## Current Status
-Functional application with complete backend API, route optimization, Google Maps integration, and turn-by-turn navigation. Ready for real-world testing and deployment.
+Functional application with complete backend API, route optimization, Google Maps integration, and turn-by-turn navigation. Deployment-ready with health check endpoint and optimized startup sequence for autoscale deployments.
