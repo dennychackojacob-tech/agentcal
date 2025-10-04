@@ -108,6 +108,7 @@ export async function generateSmartSchedule(
   const scheduledAppointments: Appointment[] = [];
   const visitedSlots = new Set<string>();
   const visitedClientProperties = new Set<string>();
+  const scheduledTimeRanges: Array<{ start: number; end: number }> = []; // Track scheduled time ranges
   let currentLocation = startingLocation;
   
   // Initialize current time with agent's start time
@@ -174,6 +175,19 @@ export async function generateSmartSchedule(
         }
       }
 
+      // Check for time conflicts with already scheduled appointments
+      const slotStartMinutes = timeToMinutes(candidate.slot.startTime);
+      const slotEndMinutes = timeToMinutes(candidate.slot.endTime);
+      
+      const hasConflict = scheduledTimeRanges.some(range => {
+        // Two time ranges conflict if one starts before the other ends
+        return (slotStartMinutes < range.end && slotEndMinutes > range.start);
+      });
+      
+      if (hasConflict) {
+        continue; // Skip this candidate - time conflict!
+      }
+
       // Among feasible candidates, choose the one with shortest distance
       if (distance < shortestDistance) {
         shortestDistance = distance;
@@ -218,6 +232,14 @@ export async function generateSmartSchedule(
 
     scheduledAppointments.push(appointment);
     visitedSlots.add(bestCandidate.slot.id);
+    
+    // Add this time range to prevent future conflicts
+    const appointmentStartMinutes = startHour * 60 + startMinute;
+    const appointmentEndMinutes = endHour * 60 + endMinute;
+    scheduledTimeRanges.push({
+      start: appointmentStartMinutes,
+      end: appointmentEndMinutes
+    });
 
     // Update current location, time, and totals
     if (bestCandidate.property.latitude && bestCandidate.property.longitude) {
