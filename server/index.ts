@@ -7,6 +7,11 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Health check endpoint for deployment verification
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "healthy", timestamp: new Date().toISOString() });
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -38,9 +43,6 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Seed initial data
-  await seedData();
-  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -69,7 +71,16 @@ app.use((req, res, next) => {
     port,
     host: "0.0.0.0",
     reusePort: true,
-  }, () => {
+  }, async () => {
     log(`serving on port ${port}`);
+    
+    // Seed initial data after server is ready
+    // This prevents startup delays during deployment
+    try {
+      await seedData();
+      log("Database seeded successfully");
+    } catch (error) {
+      log(`Warning: Failed to seed database: ${error}`);
+    }
   });
 })();
