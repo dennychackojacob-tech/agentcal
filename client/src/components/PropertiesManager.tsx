@@ -60,6 +60,10 @@ export default function PropertiesManager({ agentId, properties }: PropertiesMan
     return preferences?.some(p => p.propertyId === propertyId) || false;
   };
 
+  const getPropertyPreference = (propertyId: string) => {
+    return preferences?.find(p => p.propertyId === propertyId);
+  };
+
   const formatPrice = (price: number | null) => {
     if (!price) return "Price on request";
     return new Intl.NumberFormat('en-US', {
@@ -67,6 +71,18 @@ export default function PropertiesManager({ agentId, properties }: PropertiesMan
       currency: 'USD',
       minimumFractionDigits: 0,
     }).format(price);
+  };
+
+  const formatBookedDate = (date: Date | string) => {
+    const bookingDate = new Date(date);
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    }).format(bookingDate);
   };
 
   return (
@@ -127,6 +143,7 @@ export default function PropertiesManager({ agentId, properties }: PropertiesMan
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {properties.map((property) => {
                   const assigned = isPropertyAssigned(property.id);
+                  const preference = getPropertyPreference(property.id);
                   return (
                     <Card
                       key={property.id}
@@ -151,6 +168,11 @@ export default function PropertiesManager({ agentId, properties }: PropertiesMan
                               <MapPin className="w-3 h-3" />
                               {property.city}, {property.state}
                             </p>
+                            {assigned && preference?.bookedAt && (
+                              <p className="text-xs text-muted-foreground mt-1" data-testid={`text-booked-date-${property.id}`}>
+                                Booked: {formatBookedDate(preference.bookedAt)}
+                              </p>
+                            )}
                           </div>
                           <div className="flex items-center">
                             <Checkbox

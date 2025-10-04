@@ -287,7 +287,8 @@ export class MemStorage implements IStorage {
       ...insertPref, 
       id,
       priority: insertPref.priority ?? 1,
-      notes: insertPref.notes ?? null
+      notes: insertPref.notes ?? null,
+      bookedAt: new Date()
     };
     this.propertyPreferences.set(id, preference);
     return preference;

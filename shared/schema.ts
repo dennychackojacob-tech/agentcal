@@ -43,6 +43,7 @@ export const propertyPreferences = pgTable("property_preferences", {
   propertyId: varchar("property_id").notNull().references(() => properties.id),
   priority: integer("priority").default(1), // 1 = high priority, 2 = medium, 3 = low
   notes: text("notes"),
+  bookedAt: timestamp("booked_at").notNull().defaultNow(),
 });
 
 export const showingSlots = pgTable("showing_slots", {
@@ -73,7 +74,7 @@ export const appointments = pgTable("appointments", {
 export const insertAgentSchema = createInsertSchema(agents).omit({ id: true });
 export const insertPropertySchema = createInsertSchema(properties).omit({ id: true });
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true });
-export const insertPropertyPreferenceSchema = createInsertSchema(propertyPreferences).omit({ id: true });
+export const insertPropertyPreferenceSchema = createInsertSchema(propertyPreferences).omit({ id: true, bookedAt: true });
 export const insertShowingSlotSchema = createInsertSchema(showingSlots).omit({ id: true });
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true });
 
