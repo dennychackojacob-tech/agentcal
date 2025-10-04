@@ -4,6 +4,7 @@
 RouteWise is an intelligent scheduling application designed specifically for real estate agents to manage property showings and optimize travel routes. The app calculates distances between properties and suggests the most efficient visiting sequence to minimize travel time and maximize productivity.
 
 ## Recent Changes
+- **2025-10-04**: Implemented Automated Booking Workflow - intelligent system that searches available property showing times, generates booking requests based on distance/time feasibility, and manages listing agent confirmations via Booking Queue UI with confirm/reject actions
 - **2025-10-03**: Added Smart Schedule Generator - agents can select a date, view available clients, and automatically generate optimized schedules considering client availability, property preferences, and showing time slots. Includes automatic date synchronization with Schedule tab.
 - **2025-10-03**: Added Google Maps navigation - "Start Navigation" button opens turn-by-turn directions with all route stops
 - **2025-09-28**: Integrated Google Maps API with interactive map, property markers, and route visualization
@@ -25,6 +26,7 @@ RouteWise is an intelligent scheduling application designed specifically for rea
 - **RouteMap Component**: Interactive map view with property markers and route visualization
 - **PropertyCard Component**: Reusable property display with scheduling actions
 - **SmartScheduler Component**: Intelligent scheduling interface with date selection, client availability, and one-click schedule generation
+- **BookingQueue Component**: Manage pending/confirmed/rejected booking requests with listing agent actions
 - **Theme System**: Dark/light mode toggle with professional color scheme
 
 ### Data Models
@@ -32,8 +34,9 @@ RouteWise is an intelligent scheduling application designed specifically for rea
 - **Client**: Client contact and availability preferences (preferred days/times)
 - **Property**: Property details with geocoordinates for route calculation
 - **PropertyPreference**: Links clients to their preferred properties
-- **ShowingSlot**: Time slot availability for property showings
-- **Appointment**: Scheduled showings with client information
+- **ShowingSlot**: Time slot availability for property showings with maxCapacity (default 10) for group showings
+- **Appointment**: Scheduled showings with client information, linked to bookingRequestId
+- **BookingRequest**: Automated booking requests with status (pending/confirmed/rejected), routing metadata (travel time/distance), and audit trail
 - **DailySchedule**: Optimized daily route with travel time calculations
 - **RouteStop**: Individual stops with travel time estimates
 
