@@ -106,9 +106,8 @@ export async function generateSmartSchedule(
 
   // Step 4: Build chronological schedule with travel-time awareness
   const scheduledAppointments: Appointment[] = [];
-  const visitedSlots = new Set<string>();
   const visitedClientProperties = new Set<string>();
-  const scheduledTimeRanges: Array<{ start: number; end: number }> = []; // Track scheduled time ranges
+  const scheduledTimeRanges: Array<{ start: number; end: number; propertyId: string }> = []; // Track scheduled time ranges with property
   let currentLocation = startingLocation;
   
   // Initialize current time with agent's start time
@@ -152,7 +151,6 @@ export async function generateSmartSchedule(
       const candidate = selectedCandidates[i];
       
       if (!candidate.property.latitude || !candidate.property.longitude) continue;
-      if (visitedSlots.has(candidate.slot.id)) continue;
 
       // Calculate distance and travel time to this property
       const distance = calculateDistance(
@@ -176,16 +174,19 @@ export async function generateSmartSchedule(
       }
 
       // Check for time conflicts with already scheduled appointments
+      // Note: Group showings are allowed (same property, same time, different clients)
       const slotStartMinutes = timeToMinutes(candidate.slot.startTime);
       const slotEndMinutes = timeToMinutes(candidate.slot.endTime);
       
       const hasConflict = scheduledTimeRanges.some(range => {
-        // Two time ranges conflict if one starts before the other ends
-        return (slotStartMinutes < range.end && slotEndMinutes > range.start);
+        const timeOverlap = (slotStartMinutes < range.end && slotEndMinutes > range.start);
+        const differentProperty = range.propertyId !== candidate.property.id;
+        // Conflict only if time overlaps AND it's a different property (can't be in two places at once)
+        return timeOverlap && differentProperty;
       });
       
       if (hasConflict) {
-        continue; // Skip this candidate - time conflict!
+        continue; // Skip this candidate - time conflict at different property!
       }
 
       // Among feasible candidates, choose the one with shortest distance
@@ -224,21 +225,19 @@ export async function generateSmartSchedule(
       notes: `Smart scheduled - ${bestCandidate.client.notes || 'No notes'}`
     });
 
-    // Mark slot as booked
-    await storage.updateShowingSlot(bestCandidate.slot.id, {
-      isBooked: 'true',
-      bookedBy: bestCandidate.client.id
-    });
+    // Note: We don't mark slots as booked during smart scheduling
+    // This allows group showings (multiple clients at same property/time)
+    // Slots are managed separately from appointments
 
     scheduledAppointments.push(appointment);
-    visitedSlots.add(bestCandidate.slot.id);
     
-    // Add this time range to prevent future conflicts
+    // Add this time range to prevent future conflicts (only at different properties)
     const appointmentStartMinutes = startHour * 60 + startMinute;
     const appointmentEndMinutes = endHour * 60 + endMinute;
     scheduledTimeRanges.push({
       start: appointmentStartMinutes,
-      end: appointmentEndMinutes
+      end: appointmentEndMinutes,
+      propertyId: bestCandidate.property.id
     });
 
     // Update current location, time, and totals
