@@ -54,6 +54,22 @@ export const showingSlots = pgTable("showing_slots", {
   endTime: text("end_time").notNull(),
   isBooked: text("is_booked").notNull().default("false"), // "false", "true"
   bookedBy: varchar("booked_by").references(() => clients.id),
+  maxCapacity: integer("max_capacity").notNull().default(10), // Max clients for group showings, default 10
+});
+
+export const bookingRequests = pgTable("booking_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id),
+  propertyId: varchar("property_id").notNull().references(() => properties.id),
+  slotId: varchar("slot_id").notNull().references(() => showingSlots.id),
+  clientIds: text("client_ids").array().notNull(), // Array of client IDs for group showings
+  status: text("status").notNull().default("pending"), // pending, confirmed, rejected, expired
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
+  respondedAt: timestamp("responded_at"),
+  notes: text("notes"),
+  listingAgentEmail: text("listing_agent_email"),
+  travelTimeFromPrevious: integer("travel_time_from_previous"), // minutes
+  distanceFromPrevious: decimal("distance_from_previous", { precision: 10, scale: 2 }), // kilometers
 });
 
 export const appointments = pgTable("appointments", {
@@ -69,6 +85,7 @@ export const appointments = pgTable("appointments", {
   status: text("status").notNull().default("scheduled"), // scheduled, completed, cancelled
   notes: text("notes"),
   postAppointmentNotes: text("post_appointment_notes"),
+  bookingRequestId: varchar("booking_request_id").references(() => bookingRequests.id),
 });
 
 export const insertAgentSchema = createInsertSchema(agents).omit({ id: true });
@@ -76,6 +93,7 @@ export const insertPropertySchema = createInsertSchema(properties).omit({ id: tr
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true });
 export const insertPropertyPreferenceSchema = createInsertSchema(propertyPreferences).omit({ id: true, bookedAt: true });
 export const insertShowingSlotSchema = createInsertSchema(showingSlots).omit({ id: true });
+export const insertBookingRequestSchema = createInsertSchema(bookingRequests).omit({ id: true, requestedAt: true });
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true });
 
 export type Agent = typeof agents.$inferSelect;
@@ -83,12 +101,14 @@ export type Property = typeof properties.$inferSelect;
 export type Client = typeof clients.$inferSelect;
 export type PropertyPreference = typeof propertyPreferences.$inferSelect;
 export type ShowingSlot = typeof showingSlots.$inferSelect;
+export type BookingRequest = typeof bookingRequests.$inferSelect;
 export type Appointment = typeof appointments.$inferSelect;
 export type InsertAgent = z.infer<typeof insertAgentSchema>;
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type InsertPropertyPreference = z.infer<typeof insertPropertyPreferenceSchema>;
 export type InsertShowingSlot = z.infer<typeof insertShowingSlotSchema>;
+export type InsertBookingRequest = z.infer<typeof insertBookingRequestSchema>;
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 
 // Additional types for route optimization

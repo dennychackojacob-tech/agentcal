@@ -10,7 +10,9 @@ import {
   type PropertyPreference,
   type InsertPropertyPreference,
   type ShowingSlot,
-  type InsertShowingSlot
+  type InsertShowingSlot,
+  type BookingRequest,
+  type InsertBookingRequest
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -63,6 +65,16 @@ export interface IStorage {
   createShowingSlot(slot: InsertShowingSlot): Promise<ShowingSlot>;
   updateShowingSlot(id: string, slot: Partial<InsertShowingSlot>): Promise<ShowingSlot | undefined>;
   deleteShowingSlot(id: string): Promise<boolean>;
+
+  // Booking Request operations
+  getBookingRequest(id: string): Promise<BookingRequest | undefined>;
+  getAllBookingRequests(): Promise<BookingRequest[]>;
+  getBookingRequestsByAgent(agentId: string): Promise<BookingRequest[]>;
+  getBookingRequestsByDate(agentId: string, date: Date): Promise<BookingRequest[]>;
+  getBookingRequestsByStatus(status: string): Promise<BookingRequest[]>;
+  createBookingRequest(request: InsertBookingRequest): Promise<BookingRequest>;
+  updateBookingRequest(id: string, request: Partial<InsertBookingRequest>): Promise<BookingRequest | undefined>;
+  deleteBookingRequest(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -72,6 +84,7 @@ export class MemStorage implements IStorage {
   private clients: Map<string, Client>;
   private propertyPreferences: Map<string, PropertyPreference>;
   private showingSlots: Map<string, ShowingSlot>;
+  private bookingRequests: Map<string, BookingRequest>;
 
   constructor() {
     this.agents = new Map();
@@ -80,6 +93,7 @@ export class MemStorage implements IStorage {
     this.clients = new Map();
     this.propertyPreferences = new Map();
     this.showingSlots = new Map();
+    this.bookingRequests = new Map();
   }
 
   // Agent operations
@@ -204,7 +218,8 @@ export class MemStorage implements IStorage {
       clientEmail: insertAppointment.clientEmail ?? null,
       clientPhone: insertAppointment.clientPhone ?? null,
       notes: insertAppointment.notes ?? null,
-      postAppointmentNotes: insertAppointment.postAppointmentNotes ?? null
+      postAppointmentNotes: insertAppointment.postAppointmentNotes ?? null,
+      bookingRequestId: insertAppointment.bookingRequestId ?? null
     };
     this.appointments.set(id, appointment);
     return appointment;
@@ -334,7 +349,8 @@ export class MemStorage implements IStorage {
       ...insertSlot, 
       id,
       isBooked: insertSlot.isBooked ?? "false",
-      bookedBy: insertSlot.bookedBy ?? null
+      bookedBy: insertSlot.bookedBy ?? null,
+      maxCapacity: insertSlot.maxCapacity ?? 10
     };
     this.showingSlots.set(id, slot);
     return slot;
@@ -350,6 +366,66 @@ export class MemStorage implements IStorage {
 
   async deleteShowingSlot(id: string): Promise<boolean> {
     return this.showingSlots.delete(id);
+  }
+
+  // Booking Request operations
+  async getBookingRequest(id: string): Promise<BookingRequest | undefined> {
+    return this.bookingRequests.get(id);
+  }
+
+  async getAllBookingRequests(): Promise<BookingRequest[]> {
+    return Array.from(this.bookingRequests.values());
+  }
+
+  async getBookingRequestsByAgent(agentId: string): Promise<BookingRequest[]> {
+    return Array.from(this.bookingRequests.values()).filter(
+      (request) => request.agentId === agentId
+    );
+  }
+
+  async getBookingRequestsByDate(agentId: string, date: Date): Promise<BookingRequest[]> {
+    return Array.from(this.bookingRequests.values()).filter((request) => {
+      if (request.agentId !== agentId) return false;
+      const slot = this.showingSlots.get(request.slotId);
+      if (!slot) return false;
+      const slotDate = new Date(slot.date);
+      return slotDate.toDateString() === date.toDateString();
+    });
+  }
+
+  async getBookingRequestsByStatus(status: string): Promise<BookingRequest[]> {
+    return Array.from(this.bookingRequests.values()).filter(
+      (request) => request.status === status
+    );
+  }
+
+  async createBookingRequest(insertRequest: InsertBookingRequest): Promise<BookingRequest> {
+    const id = randomUUID();
+    const request: BookingRequest = {
+      ...insertRequest,
+      id,
+      status: insertRequest.status ?? "pending",
+      requestedAt: new Date(),
+      respondedAt: insertRequest.respondedAt ?? null,
+      notes: insertRequest.notes ?? null,
+      listingAgentEmail: insertRequest.listingAgentEmail ?? null,
+      travelTimeFromPrevious: insertRequest.travelTimeFromPrevious ?? null,
+      distanceFromPrevious: insertRequest.distanceFromPrevious ?? null
+    };
+    this.bookingRequests.set(id, request);
+    return request;
+  }
+
+  async updateBookingRequest(id: string, updates: Partial<InsertBookingRequest>): Promise<BookingRequest | undefined> {
+    const request = this.bookingRequests.get(id);
+    if (!request) return undefined;
+    const updatedRequest = { ...request, ...updates };
+    this.bookingRequests.set(id, updatedRequest);
+    return updatedRequest;
+  }
+
+  async deleteBookingRequest(id: string): Promise<boolean> {
+    return this.bookingRequests.delete(id);
   }
 }
 
