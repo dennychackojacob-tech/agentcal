@@ -222,40 +222,77 @@ export async function seedData() {
     preferences.map(p => storage.createPropertyPreference(p))
   );
 
-  // Create showing slots for next Saturday
-  const nextSaturday = new Date();
-  const daysUntilSaturday = (6 - nextSaturday.getDay() + 7) % 7;
-  nextSaturday.setDate(nextSaturday.getDate() + (daysUntilSaturday === 0 ? 7 : daysUntilSaturday));
-  nextSaturday.setHours(0, 0, 0, 0);
+  // Create showing slots for multiple dates (this weekend + next weekend)
+  const slotDate = new Date();
+  slotDate.setHours(0, 0, 0, 0);
+  
+  // Calculate this coming Saturday and Sunday
+  const dayOfWeek = slotDate.getDay(); // 0 = Sunday, 6 = Saturday
+  const thisSaturday = new Date(slotDate);
+  const thisSunday = new Date(slotDate);
+  
+  // Days until Saturday (0-6)
+  const daysUntilSaturday = dayOfWeek === 6 ? 0 : (6 - dayOfWeek + 7) % 7;
+  thisSaturday.setDate(slotDate.getDate() + daysUntilSaturday);
+  
+  // Days until Sunday (0-6)
+  const daysUntilSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek) % 7;
+  thisSunday.setDate(slotDate.getDate() + daysUntilSunday);
+  
+  // Next Saturday and Sunday (7 days after this weekend)
+  const nextSaturday = new Date(thisSaturday);
+  nextSaturday.setDate(thisSaturday.getDate() + 7);
+  
+  const nextSunday = new Date(thisSunday);
+  nextSunday.setDate(thisSunday.getDate() + 7);
+  
+  // Also add Friday if it's coming up
+  const thisFriday = new Date(slotDate);
+  const daysUntilFriday = dayOfWeek === 5 ? 0 : (5 - dayOfWeek + 7) % 7;
+  thisFriday.setDate(slotDate.getDate() + daysUntilFriday);
+  
+  const nextFriday = new Date(thisFriday);
+  nextFriday.setDate(thisFriday.getDate() + 7);
 
-  const showingSlots: InsertShowingSlot[] = [
+  // Create showing slots template for each property
+  const createSlotsForDate = (date: Date) => [
     // Property 0 (Toronto) - Morning and afternoon slots
-    { propertyId: createdProperties[0].id, date: nextSaturday, startTime: "09:00", endTime: "10:00", isBooked: "false" },
-    { propertyId: createdProperties[0].id, date: nextSaturday, startTime: "11:00", endTime: "12:00", isBooked: "false" },
-    { propertyId: createdProperties[0].id, date: nextSaturday, startTime: "14:00", endTime: "15:00", isBooked: "false" },
+    { propertyId: createdProperties[0].id, date: new Date(date), startTime: "09:00", endTime: "10:00", isBooked: "false" },
+    { propertyId: createdProperties[0].id, date: new Date(date), startTime: "11:00", endTime: "12:00", isBooked: "false" },
+    { propertyId: createdProperties[0].id, date: new Date(date), startTime: "14:00", endTime: "15:00", isBooked: "false" },
     
     // Property 1 (Mississauga) - Multiple slots
-    { propertyId: createdProperties[1].id, date: nextSaturday, startTime: "10:00", endTime: "11:00", isBooked: "false" },
-    { propertyId: createdProperties[1].id, date: nextSaturday, startTime: "13:00", endTime: "14:00", isBooked: "false" },
-    { propertyId: createdProperties[1].id, date: nextSaturday, startTime: "15:00", endTime: "16:00", isBooked: "false" },
+    { propertyId: createdProperties[1].id, date: new Date(date), startTime: "10:00", endTime: "11:00", isBooked: "false" },
+    { propertyId: createdProperties[1].id, date: new Date(date), startTime: "13:00", endTime: "14:00", isBooked: "false" },
+    { propertyId: createdProperties[1].id, date: new Date(date), startTime: "15:00", endTime: "16:00", isBooked: "false" },
     
     // Property 2 (Brampton) - Morning and afternoon
-    { propertyId: createdProperties[2].id, date: nextSaturday, startTime: "09:00", endTime: "10:00", isBooked: "false" },
-    { propertyId: createdProperties[2].id, date: nextSaturday, startTime: "14:00", endTime: "15:00", isBooked: "false" },
+    { propertyId: createdProperties[2].id, date: new Date(date), startTime: "09:00", endTime: "10:00", isBooked: "false" },
+    { propertyId: createdProperties[2].id, date: new Date(date), startTime: "14:00", endTime: "15:00", isBooked: "false" },
     
     // Property 3 (Toronto) - Afternoon only
-    { propertyId: createdProperties[3].id, date: nextSaturday, startTime: "14:00", endTime: "15:00", isBooked: "false" },
-    { propertyId: createdProperties[3].id, date: nextSaturday, startTime: "16:00", endTime: "17:00", isBooked: "false" },
+    { propertyId: createdProperties[3].id, date: new Date(date), startTime: "14:00", endTime: "15:00", isBooked: "false" },
+    { propertyId: createdProperties[3].id, date: new Date(date), startTime: "16:00", endTime: "17:00", isBooked: "false" },
     
     // Property 4 (Milton) - Full day availability
-    { propertyId: createdProperties[4].id, date: nextSaturday, startTime: "09:00", endTime: "10:00", isBooked: "false" },
-    { propertyId: createdProperties[4].id, date: nextSaturday, startTime: "11:00", endTime: "12:00", isBooked: "false" },
-    { propertyId: createdProperties[4].id, date: nextSaturday, startTime: "13:00", endTime: "14:00", isBooked: "false" },
-    { propertyId: createdProperties[4].id, date: nextSaturday, startTime: "15:00", endTime: "16:00", isBooked: "false" },
+    { propertyId: createdProperties[4].id, date: new Date(date), startTime: "09:00", endTime: "10:00", isBooked: "false" },
+    { propertyId: createdProperties[4].id, date: new Date(date), startTime: "11:00", endTime: "12:00", isBooked: "false" },
+    { propertyId: createdProperties[4].id, date: new Date(date), startTime: "13:00", endTime: "14:00", isBooked: "false" },
+    { propertyId: createdProperties[4].id, date: new Date(date), startTime: "15:00", endTime: "16:00", isBooked: "false" },
     
     // Property 5 (Mississauga) - Afternoon slots
-    { propertyId: createdProperties[5].id, date: nextSaturday, startTime: "13:00", endTime: "14:00", isBooked: "false" },
-    { propertyId: createdProperties[5].id, date: nextSaturday, startTime: "15:00", endTime: "16:00", isBooked: "false" }
+    { propertyId: createdProperties[5].id, date: new Date(date), startTime: "13:00", endTime: "14:00", isBooked: "false" },
+    { propertyId: createdProperties[5].id, date: new Date(date), startTime: "15:00", endTime: "16:00", isBooked: "false" }
+  ];
+
+  // Create slots for multiple dates
+  const showingSlots: InsertShowingSlot[] = [
+    ...createSlotsForDate(thisFriday),
+    ...createSlotsForDate(thisSaturday),
+    ...createSlotsForDate(thisSunday),
+    ...createSlotsForDate(nextFriday),
+    ...createSlotsForDate(nextSaturday),
+    ...createSlotsForDate(nextSunday)
   ];
 
   const createdSlots = await Promise.all(

@@ -36,17 +36,39 @@ export function optimizeRoute(
   }
 
   if (appointmentsWithProps.length === 1) {
+    const singleItem = appointmentsWithProps[0];
+    // Calculate distance from agent's default starting location (Mississauga)
+    const startingLat = 43.5890;
+    const startingLng = -79.6441;
+    
+    let totalDistance = 0;
+    let totalTravelTime = 0;
+    let distanceFromStart: number | undefined;
+    let travelTimeFromStart: number | undefined;
+    
+    if (singleItem.property.latitude && singleItem.property.longitude) {
+      distanceFromStart = calculateDistance(
+        startingLat,
+        startingLng,
+        parseFloat(singleItem.property.latitude),
+        parseFloat(singleItem.property.longitude)
+      );
+      travelTimeFromStart = estimateTravelTime(distanceFromStart);
+      totalDistance = distanceFromStart;
+      totalTravelTime = travelTimeFromStart;
+    }
+    
     return {
       date,
       agent,
       stops: [{
-        appointment: appointmentsWithProps[0].appointment,
-        property: appointmentsWithProps[0].property,
-        estimatedTravelTime: undefined,
-        distanceFromPrevious: undefined
+        appointment: singleItem.appointment,
+        property: singleItem.property,
+        estimatedTravelTime: travelTimeFromStart,
+        distanceFromPrevious: distanceFromStart
       }],
-      totalDistance: 0,
-      totalTravelTime: 0,
+      totalDistance,
+      totalTravelTime,
       optimized: true
     };
   }
