@@ -101,9 +101,10 @@ export default function Dashboard({
 
       {/* Main Content */}
       <main className="container max-w-7xl mx-auto px-4 py-6 pb-20 md:pb-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card data-testid="card-today-appointments">
+        {/* Stats Cards - Only show on Schedule tab */}
+        {activeTab === "schedule" && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <Card data-testid="card-today-appointments">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -115,7 +116,7 @@ export default function Dashboard({
             </CardContent>
           </Card>
 
-          <Card data-testid="card-total-distance">
+            <Card data-testid="card-total-distance">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -127,7 +128,7 @@ export default function Dashboard({
             </CardContent>
           </Card>
 
-          <Card data-testid="card-travel-time">
+            <Card data-testid="card-travel-time">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -139,7 +140,7 @@ export default function Dashboard({
             </CardContent>
           </Card>
 
-          <Card data-testid="card-route-status">
+            <Card data-testid="card-route-status">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -151,11 +152,12 @@ export default function Dashboard({
                 <Map className="w-8 h-8 text-muted-foreground" />
               </div>
             </CardContent>
-          </Card>
-        </div>
+            </Card>
+          </div>
+        )}
 
-        {/* Next Appointment Card */}
-        {nextAppointment && (
+        {/* Next Appointment Card - Only show on Schedule tab */}
+        {activeTab === "schedule" && nextAppointment && (
           <Card className="mb-6 border-accent/50" data-testid="card-next-appointment">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">

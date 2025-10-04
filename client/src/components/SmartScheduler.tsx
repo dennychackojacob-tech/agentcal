@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, MapPin, Users, CheckCircle2, Clock, Route, Calendar as CalendarIcon, Home, User } from "lucide-react";
 import type { Client, Property, PropertyPreference } from "@shared/schema";
 
@@ -170,90 +169,100 @@ export default function SmartScheduler({ agentId, onDateChange }: SmartScheduler
           {/* Client Selection - Only show when date is selected */}
           {selectedDate && (
             <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  Select Client ({availableClients.length} available)
-                </h3>
-                
-                {availableClients.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-6">
-                      <p className="text-sm text-muted-foreground text-center">
-                        No clients available on this day
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Select value={selectedClientId || ""} onValueChange={setSelectedClientId}>
-                    <SelectTrigger className="w-full" data-testid="select-client-trigger">
-                      <SelectValue placeholder="Choose a client..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableClients.map((client) => (
-                        <SelectItem 
-                          key={client.id} 
-                          value={client.id}
-                          data-testid={`select-client-${client.id}`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4" />
-                            {client.name}
+              <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Available Clients ({availableClients.length})
+              </h3>
+              
+              {availableClients.length === 0 ? (
+                <Card>
+                  <CardContent className="p-6">
+                    <p className="text-sm text-muted-foreground text-center">
+                      No clients available on this day
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {availableClients.map((client) => (
+                    <Card
+                      key={client.id}
+                      className={`cursor-pointer transition-all hover-elevate ${
+                        selectedClientId === client.id ? 'border-primary bg-primary/5' : ''
+                      }`}
+                      onClick={() => setSelectedClientId(client.id)}
+                      data-testid={`client-card-${client.id}`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              selectedClientId === client.id ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                            }`}>
+                              <User className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-base">{client.name}</h4>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {client.email}
+                              </p>
+                              {client.notes && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {client.notes}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+                          {selectedClientId === client.id && (
+                            <Badge variant="default" className="shrink-0">
+                              {clientProperties.length} properties
+                            </Badge>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
 
               {/* Selected Client's Properties */}
-              {selectedClientId && (
-                <Card>
+              {selectedClientId && clientProperties.length > 0 && (
+                <Card className="border-primary/50">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center justify-between flex-wrap gap-2">
-                      <span>{availableClients.find(c => c.id === selectedClientId)?.name}'s Properties</span>
-                      <Badge variant="secondary">
-                        {clientProperties.length} assigned
-                      </Badge>
+                    <CardTitle className="text-base">
+                      Select Properties to Show
                     </CardTitle>
                     <CardDescription>
-                      {availableClients.find(c => c.id === selectedClientId)?.notes || "No notes available"}
+                      Choose which properties to include in the schedule
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {clientProperties.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-6">
-                        No properties assigned to this client. Go to Properties tab to assign properties.
-                      </p>
-                    ) : (
-                      <div className="space-y-3">
-                        {clientProperties.map((property) => (
-                          <div
-                            key={property.id}
-                            className="flex items-start gap-3 p-3 rounded-md border hover-elevate"
-                            data-testid={`property-item-${property.id}`}
-                          >
-                            <Checkbox
-                              checked={selectedPropertyIds.has(property.id)}
-                              onCheckedChange={() => togglePropertySelection(property.id)}
-                              data-testid={`checkbox-property-${property.id}`}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <Home className="w-4 h-4 text-muted-foreground" />
-                                <Badge variant="secondary" className="text-xs">{property.propertyType}</Badge>
-                              </div>
-                              <h4 className="font-medium text-sm">{property.address}</h4>
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {property.city}, {property.state}
-                              </p>
+                    <div className="space-y-3">
+                      {clientProperties.map((property) => (
+                        <div
+                          key={property.id}
+                          className="flex items-start gap-3 p-3 rounded-md border hover-elevate"
+                          data-testid={`property-item-${property.id}`}
+                        >
+                          <Checkbox
+                            checked={selectedPropertyIds.has(property.id)}
+                            onCheckedChange={() => togglePropertySelection(property.id)}
+                            data-testid={`checkbox-property-${property.id}`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <Home className="w-4 h-4 text-muted-foreground" />
+                              <Badge variant="secondary" className="text-xs">{property.propertyType}</Badge>
                             </div>
+                            <h4 className="font-medium text-sm">{property.address}</h4>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {property.city}, {property.state}
+                            </p>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        </div>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
               )}
