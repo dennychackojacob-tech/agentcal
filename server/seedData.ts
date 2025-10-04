@@ -1,5 +1,5 @@
 import { storage } from './storage';
-import type { InsertAgent, InsertProperty, InsertAppointment, InsertClient, InsertPropertyPreference, InsertShowingSlot } from '@shared/schema';
+import type { InsertAgent, InsertProperty, InsertAppointment, InsertClient, InsertPropertyPreference, InsertShowingSlot, InsertBookingRequest } from '@shared/schema';
 
 export async function seedData() {
   // Check if data already exists
@@ -258,8 +258,73 @@ export async function seedData() {
     { propertyId: createdProperties[5].id, date: nextSaturday, startTime: "15:00", endTime: "16:00", isBooked: "false" }
   ];
 
-  await Promise.all(
+  const createdSlots = await Promise.all(
     showingSlots.map(s => storage.createShowingSlot(s))
+  );
+
+  // Create sample booking requests to demonstrate the Bookings tab
+  const bookingRequests: InsertBookingRequest[] = [
+    // Pending request - Property 0 (Toronto), slot at 9am
+    {
+      agentId: createdAgent.id,
+      propertyId: createdProperties[0].id,
+      slotId: createdSlots[0].id, // 9am-10am slot
+      clientIds: [createdClients[3].id], // Sarah Williams (Toronto preference)
+      status: "pending",
+      notes: "Client interested in downtown Toronto properties",
+      travelTimeFromPrevious: 0,
+      distanceFromPrevious: "0"
+    },
+    // Pending request - Property 3 (Toronto), slot at 2pm  
+    {
+      agentId: createdAgent.id,
+      propertyId: createdProperties[3].id,
+      slotId: createdSlots[8].id, // 2pm-3pm slot
+      clientIds: [createdClients[3].id], // Sarah Williams
+      status: "pending",
+      notes: "Second property showing for Sarah Williams",
+      travelTimeFromPrevious: 2,
+      distanceFromPrevious: "0.6"
+    },
+    // Pending request - Property 1 (Mississauga), slot at 1pm
+    {
+      agentId: createdAgent.id,
+      propertyId: createdProperties[1].id,
+      slotId: createdSlots[4].id, // 1pm-2pm slot
+      clientIds: [createdClients[1].id, createdClients[2].id], // Emily & Michael (both like Mississauga)
+      status: "pending",
+      notes: "Group showing for two interested clients",
+      travelTimeFromPrevious: 5,
+      distanceFromPrevious: "4.8"
+    },
+    // Confirmed request - Property 4 (Milton)
+    {
+      agentId: createdAgent.id,
+      propertyId: createdProperties[4].id,
+      slotId: createdSlots[12].id, // 1pm-2pm slot
+      clientIds: [createdClients[0].id, createdClients[1].id], // Robert & Emily
+      status: "confirmed",
+      notes: "Listing agent confirmed availability",
+      travelTimeFromPrevious: 15,
+      distanceFromPrevious: "14.2",
+      respondedAt: new Date(Date.now() - 2 * 60 * 60 * 1000) // 2 hours ago
+    },
+    // Rejected request - Property 2 (Brampton)
+    {
+      agentId: createdAgent.id,
+      propertyId: createdProperties[2].id,
+      slotId: createdSlots[7].id, // 2pm-3pm slot
+      clientIds: [createdClients[0].id],
+      status: "rejected",
+      notes: "Property no longer available for showings this weekend",
+      travelTimeFromPrevious: 19,
+      distanceFromPrevious: "17.2",
+      respondedAt: new Date(Date.now() - 24 * 60 * 60 * 1000) // 1 day ago
+    }
+  ];
+
+  await Promise.all(
+    bookingRequests.map(b => storage.createBookingRequest(b))
   );
 
   console.log('Seed data created successfully!');
@@ -269,4 +334,5 @@ export async function seedData() {
   console.log(`Clients: ${createdClients.length}`);
   console.log(`Property Preferences: ${preferences.length}`);
   console.log(`Showing Slots: ${showingSlots.length}`);
+  console.log(`Booking Requests: ${bookingRequests.length}`);
 }
