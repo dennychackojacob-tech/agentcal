@@ -100,7 +100,7 @@ export default function Dashboard({
       </header>
 
       {/* Main Content */}
-      <main className="container max-w-7xl mx-auto px-4 py-6">
+      <main className="container max-w-7xl mx-auto px-4 py-6 pb-20 md:pb-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card data-testid="card-today-appointments">
@@ -183,7 +183,8 @@ export default function Dashboard({
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5" data-testid="dashboard-tabs">
+          {/* Desktop Tabs - Hidden on mobile */}
+          <TabsList className="hidden md:grid w-full grid-cols-5" data-testid="dashboard-tabs-desktop">
             <TabsTrigger value="schedule" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Schedule
@@ -245,6 +246,79 @@ export default function Dashboard({
             <BookingQueue agentId={agent.id} />
           </TabsContent>
         </Tabs>
+
+        {/* Mobile Bottom Navigation - Hidden on desktop */}
+        <nav 
+          className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 safe-bottom"
+          data-testid="mobile-bottom-nav"
+        >
+          <div className="grid grid-cols-5 h-16">
+            <button
+              onClick={() => setActiveTab("schedule")}
+              className={`flex flex-col items-center justify-center gap-1 min-h-[4rem] hover-elevate active-elevate-2 ${
+                activeTab === "schedule" ? "text-primary" : "text-muted-foreground"
+              }`}
+              aria-label="Schedule"
+              aria-current={activeTab === "schedule" ? "page" : undefined}
+              data-testid="mobile-nav-schedule"
+            >
+              <Calendar className="w-5 h-5" />
+              <span className="text-xs font-medium">Schedule</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab("map")}
+              className={`flex flex-col items-center justify-center gap-1 min-h-[4rem] hover-elevate active-elevate-2 ${
+                activeTab === "map" ? "text-primary" : "text-muted-foreground"
+              }`}
+              aria-label="Map View"
+              aria-current={activeTab === "map" ? "page" : undefined}
+              data-testid="mobile-nav-map"
+            >
+              <Map className="w-5 h-5" />
+              <span className="text-xs font-medium">Map</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab("clients")}
+              className={`flex flex-col items-center justify-center gap-1 min-h-[4rem] hover-elevate active-elevate-2 ${
+                activeTab === "clients" ? "text-primary" : "text-muted-foreground"
+              }`}
+              aria-label="Clients"
+              aria-current={activeTab === "clients" ? "page" : undefined}
+              data-testid="mobile-nav-clients"
+            >
+              <Users className="w-5 h-5" />
+              <span className="text-xs font-medium">Clients</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab("properties")}
+              className={`flex flex-col items-center justify-center gap-1 min-h-[4rem] hover-elevate active-elevate-2 ${
+                activeTab === "properties" ? "text-primary" : "text-muted-foreground"
+              }`}
+              aria-label="Properties"
+              aria-current={activeTab === "properties" ? "page" : undefined}
+              data-testid="mobile-nav-properties"
+            >
+              <Home className="w-5 h-5" />
+              <span className="text-xs font-medium">Properties</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab("bookings")}
+              className={`flex flex-col items-center justify-center gap-1 min-h-[4rem] hover-elevate active-elevate-2 ${
+                activeTab === "bookings" ? "text-primary" : "text-muted-foreground"
+              }`}
+              aria-label="Bookings"
+              aria-current={activeTab === "bookings" ? "page" : undefined}
+              data-testid="mobile-nav-bookings"
+            >
+              <ClipboardList className="w-5 h-5" />
+              <span className="text-xs font-medium">Bookings</span>
+            </button>
+          </div>
+        </nav>
       </main>
     </div>
   );
