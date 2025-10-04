@@ -142,7 +142,7 @@ export default function PropertiesManager({ agentId, properties }: PropertiesMan
                               {assigned && (
                                 <Badge className="bg-accent text-accent-foreground">
                                   <Check className="w-3 h-3 mr-1" />
-                                  Assigned
+                                  Booked
                                 </Badge>
                               )}
                             </div>
