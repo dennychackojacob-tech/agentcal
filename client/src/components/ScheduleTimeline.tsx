@@ -2,13 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -129,36 +123,37 @@ export default function ScheduleTimeline({ schedule, onOptimize, onReorderStops 
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Select value={selectedClient} onValueChange={setSelectedClient}>
-              <SelectTrigger className="w-48" data-testid="select-filter-client">
-                <SelectValue placeholder="Filter by client" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Clients ({schedule.stops.length})</SelectItem>
-                {clients.map((client) => {
-                  const count = schedule.stops.filter(s => s.appointment.clientName === client).length;
-                  return (
-                    <SelectItem key={client} value={client}>
-                      {client} ({count})
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-            {onOptimize && !schedule.optimized && (
-              <Button 
-                onClick={onOptimize}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                data-testid="button-optimize-route"
-              >
-                <Zap className="w-4 h-4 mr-2" />
-                Optimize Route
-              </Button>
-            )}
-          </div>
+          {onOptimize && !schedule.optimized && (
+            <Button 
+              onClick={onOptimize}
+              className="bg-accent hover:bg-accent/90 text-accent-foreground"
+              data-testid="button-optimize-route"
+            >
+              <Zap className="w-4 h-4 mr-2" />
+              Optimize Route
+            </Button>
+          )}
         </div>
       </CardHeader>
+
+      {/* Client Filter Tabs */}
+      <div className="px-6 pb-4 border-b">
+        <Tabs value={selectedClient} onValueChange={setSelectedClient}>
+          <TabsList className="inline-flex gap-1">
+            <TabsTrigger value="all" data-testid="tab-all-clients">
+              All Clients ({schedule.stops.length})
+            </TabsTrigger>
+            {clients.map((client) => {
+              const count = schedule.stops.filter(s => s.appointment.clientName === client).length;
+              return (
+                <TabsTrigger key={client} value={client} data-testid={`tab-client-${client.replace(/\s+/g, '-').toLowerCase()}`}>
+                  {client} ({count})
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </Tabs>
+      </div>
 
       <CardContent>
         {filteredStops.length === 0 ? (
