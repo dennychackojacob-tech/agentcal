@@ -13,13 +13,15 @@ import {
   Settings,
   Bell,
   User,
-  Users
+  Users,
+  ClipboardList
 } from "lucide-react";
 import PropertyCard from "./PropertyCard";
 import ScheduleTimeline from "./ScheduleTimeline";
 import RouteMap from "./RouteMap";
 import SmartScheduler from "./SmartScheduler";
 import PropertiesManager from "./PropertiesManager";
+import { BookingQueue } from "./BookingQueue";
 import type { DailySchedule, Property, Agent } from "@shared/schema";
 
 interface DashboardProps {
@@ -181,7 +183,7 @@ export default function Dashboard({
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4" data-testid="dashboard-tabs">
+          <TabsList className="grid w-full grid-cols-5" data-testid="dashboard-tabs">
             <TabsTrigger value="schedule" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Schedule
@@ -197,6 +199,10 @@ export default function Dashboard({
             <TabsTrigger value="properties" className="flex items-center gap-2">
               <Home className="w-4 h-4" />
               Properties
+            </TabsTrigger>
+            <TabsTrigger value="bookings" className="flex items-center gap-2">
+              <ClipboardList className="w-4 h-4" />
+              Bookings
             </TabsTrigger>
           </TabsList>
 
@@ -233,6 +239,10 @@ export default function Dashboard({
 
           <TabsContent value="properties" className="space-y-6">
             <PropertiesManager agentId={agent.id} properties={availableProperties} />
+          </TabsContent>
+
+          <TabsContent value="bookings" className="space-y-6">
+            <BookingQueue agentId={agent.id} />
           </TabsContent>
         </Tabs>
       </main>

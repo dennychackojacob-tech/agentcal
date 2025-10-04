@@ -1,8 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertAgentSchema, insertPropertySchema, insertAppointmentSchema, insertPropertyPreferenceSchema } from "@shared/schema";
+import { insertAgentSchema, insertPropertySchema, insertAppointmentSchema, insertPropertyPreferenceSchema, insertBookingRequestSchema } from "@shared/schema";
 import { z } from "zod";
+import { generateBookingRequests, confirmBookingRequest, rejectBookingRequest } from "./utils/bookingOrchestrator";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Agent routes
@@ -424,6 +425,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Schedule fetch error:', error);
       res.status(500).json({ error: "Failed to fetch schedule" });
+    }
+  });
+
+  // Booking Request routes
+  app.get("/api/booking-requests", async (req, res) => {
+    try {
+      const { agentId, status, date } = req.query;
+      
+      let requests;
+      if (agentId && date) {
+        requests = await storage.getBookingRequestsByDate(agentId as string, new Date(date as string));
+      } else if (agentId) {
+        requests = await storage.getBookingRequestsByAgent(agentId as string);
+      } else if (status) {
+        requests = await storage.getBookingRequestsByStatus(status as string);
+      } else {
+        requests = await storage.getAllBookingRequests();
+      }
+      
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch booking requests" });
+    }
+  });
+
+  app.post("/api/booking-requests/generate", async (req, res) => {
+    try {
+      const schema = z.object({
+        agentId: z.string(),
+        date: z.string(),
+        clientIds: z.array(z.string()),
+        startLocation: z.object({
+          lat: z.number(),
+          lng: z.number()
+        }),
+        startTime: z.string().optional(),
+        endTime: z.string().optional()
+      });
+
+      const validatedData = schema.parse(req.body);
+      const requests = await generateBookingRequests(
+        storage,
+        validatedData.agentId,
+        new Date(validatedData.date),
+        validatedData.clientIds,
+        validatedData.startLocation,
+        validatedData.startTime,
+        validatedData.endTime
+      );
+      
+      res.status(201).json(requests);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      if (error instanceof Error) {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to generate booking requests" });
+    }
+  });
+
+  app.patch("/api/booking-requests/:id/confirm", async (req, res) => {
+    try {
+      await confirmBookingRequest(storage, req.params.id);
+      const updatedRequest = await storage.getBookingRequest(req.params.id);
+      res.json(updatedRequest);
+    } catch (error) {
+      if (error instanceof Error) {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to confirm booking request" });
+    }
+  });
+
+  app.patch("/api/booking-requests/:id/reject", async (req, res) => {
+    try {
+      const { reason } = req.body;
+      await rejectBookingRequest(storage, req.params.id, reason);
+      const updatedRequest = await storage.getBookingRequest(req.params.id);
+      res.json(updatedRequest);
+    } catch (error) {
+      if (error instanceof Error) {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to reject booking request" });
     }
   });
 
