@@ -59,7 +59,7 @@ export default function Dashboard({
   };
 
   return (
-    <div className="min-h-screen bg-background" data-testid="dashboard-main">
+    <div className="min-h-screen bg-background overflow-x-hidden" data-testid="dashboard-main">
       {/* Header */}
       <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="container max-w-7xl mx-auto px-4 py-4">
@@ -251,10 +251,10 @@ export default function Dashboard({
 
         {/* Mobile Bottom Navigation - Hidden on desktop */}
         <nav 
-          className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 safe-bottom"
+          className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 safe-bottom max-w-full"
           data-testid="mobile-bottom-nav"
         >
-          <div className="grid grid-cols-5 h-16">
+          <div className="grid grid-cols-5 h-16 w-full">
             <button
               onClick={() => setActiveTab("schedule")}
               className={`flex flex-col items-center justify-center gap-1 min-h-[4rem] hover-elevate active-elevate-2 ${

@@ -172,20 +172,22 @@ export default function SmartScheduler({ agentId, onDateChange }: SmartScheduler
                 </Card>
               ) : (
                 <Tabs value={selectedClientId || ""} onValueChange={setSelectedClientId}>
-                  <TabsList className="w-full grid" style={{ gridTemplateColumns: `repeat(${availableClients.length}, 1fr)` }}>
-                    {availableClients.map((client) => (
-                      <TabsTrigger
-                        key={client.id}
-                        value={client.id}
-                        data-testid={`trigger-client-${client.id}`}
-                        className="flex items-center gap-2"
-                      >
-                        <User className="w-4 h-4" />
-                        <span className="hidden sm:inline">{client.name}</span>
-                        <span className="sm:hidden">{client.name.split(' ')[0]}</span>
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
+                  <div className="w-full overflow-x-auto">
+                    <TabsList className="inline-flex w-auto min-w-full">
+                      {availableClients.map((client) => (
+                        <TabsTrigger
+                          key={client.id}
+                          value={client.id}
+                          data-testid={`trigger-client-${client.id}`}
+                          className="flex items-center gap-2 whitespace-nowrap"
+                        >
+                          <User className="w-4 h-4" />
+                          <span className="hidden sm:inline">{client.name}</span>
+                          <span className="sm:hidden">{client.name.split(' ')[0]}</span>
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </div>
 
                   {availableClients.map((client) => (
                     <TabsContent key={client.id} value={client.id} className="mt-4">
